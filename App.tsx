@@ -1,20 +1,288 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState, useEffect } from 'react'
+import { 
+  View, 
+  Text, 
+  ScrollView, 
+  StyleSheet, 
+  SafeAreaView, 
+  Alert,
+  RefreshControl,
+  TouchableOpacity,
+} from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import SessionCard from './src/components/SessionCard'
+import SessionCarousel from './src/components/SessionCarousel'
+import UserSelectionScreen from './src/components/UserSelectionScreen'
+import CreateSessionScreen from './src/components/CreateSessionScreen'
+import { useUsers } from './src/hooks/useUsers'
+import { useGolfSessions } from './src/hooks/useGolfSessions'
+import { golfUtils } from './src/lib/api'
+
+const STORAGE_KEY = '@golf_scheduler_user_id'
 
 export default function App() {
+  // User authentication state
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [showUserSelection, setShowUserSelection] = useState(false)
+  const [isLoadingUser, setIsLoadingUser] = useState(true)
+  
+  // Session creation state
+  const [showCreateSession, setShowCreateSession] = useState(false)
+
+  // Use custom hooks for data management (same as web app)
+  const { users, loading: usersLoading } = useUsers()
+  const { 
+    sessions, 
+    loading: sessionsLoading, 
+    fetchSessions,
+    submitResponse,
+    deleteResponse
+  } = useGolfSessions()
+
+  // Derived loading state
+  const loading = usersLoading || sessionsLoading
+  const [refreshing, setRefreshing] = useState(false)
+
+  // Sessions will be filtered and sorted by SessionCarousel
+
+  // Load stored user ID on app start
+  useEffect(() => {
+    const loadStoredUser = async () => {
+      try {
+        const storedUserId = await AsyncStorage.getItem(STORAGE_KEY)
+        if (storedUserId) {
+          setCurrentUserId(storedUserId)
+          setShowUserSelection(false)
+        } else {
+          setShowUserSelection(true)
+        }
+      } catch (error) {
+        console.error('Error loading stored user:', error)
+        setShowUserSelection(true)
+      } finally {
+        setIsLoadingUser(false)
+      }
+    }
+
+    loadStoredUser()
+  }, [])
+
+  // Wait for users to load before showing selection
+  useEffect(() => {
+    if (!usersLoading && users.length > 0 && currentUserId) {
+      // Verify the stored user ID still exists in the user list
+      const userExists = users.find(user => user.id === currentUserId)
+      if (!userExists) {
+        setCurrentUserId(null)
+        setShowUserSelection(true)
+      }
+    }
+  }, [users, usersLoading, currentUserId])
+
+  // Handle user selection
+  const handleUserSelect = async (userId: string) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, userId)
+      setCurrentUserId(userId)
+      setShowUserSelection(false)
+    } catch (error) {
+      console.error('Error saving user selection:', error)
+      Alert.alert('Error', 'Failed to save user selection')
+    }
+  }
+
+  // Handle user switch
+  const handleSwitchUser = () => {
+    setShowUserSelection(true)
+  }
+
+  // Handle create session
+  const handleCreateSession = () => {
+    setShowCreateSession(true)
+  }
+
+  const handleSessionCreated = () => {
+    setShowCreateSession(false)
+    fetchSessions() // Refresh the sessions list
+  }
+
+  // Refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true)
+    try {
+      await fetchSessions()
+    } catch (error) {
+      Alert.alert('Error', 'Failed to refresh sessions')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  // Event handlers
+  const handleResponseUpdate = () => {
+    fetchSessions()
+  }
+
+  // Show user selection if needed
+  if (showUserSelection || !currentUserId) {
+    return (
+      <UserSelectionScreen
+        users={users}
+        onUserSelect={handleUserSelect}
+        isLoading={usersLoading || isLoadingUser}
+      />
+    )
+  }
+
+  // Show create session screen
+  if (showCreateSession) {
+    return (
+      <CreateSessionScreen
+        users={users}
+        currentUserId={currentUserId}
+        onCancel={() => setShowCreateSession(false)}
+        onSessionCreated={handleSessionCreated}
+      />
+    )
+  }
+
+  // Show loading for sessions data
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading golf sessions...</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  // Find current user for display
+  const currentUser = users.find(user => user.id === currentUserId)
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>🏌️ Bellewood Golf</Text>
+            <Text style={styles.headerSubtitle}>See who's in for the next round!</Text>
+            {currentUser && (
+              <Text style={styles.currentUserText}>Playing as: {currentUser.nickname}</Text>
+            )}
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={handleCreateSession}
+            >
+              <Text style={styles.createButtonText}>+</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.switchUserButton}
+              onPress={handleSwitchUser}
+            >
+              <Text style={styles.switchUserIcon}>👤</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Sessions Carousel */}
+      <SessionCarousel
+        sessions={sessions}
+        users={users}
+        onResponseUpdate={handleResponseUpdate}
+        submitResponse={submitResponse}
+        deleteResponse={deleteResponse}
+        currentUserId={currentUserId}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+      />
+    </SafeAreaView>
+  )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#f9fafb',
   },
-});
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#6b7280',
+  },
+  header: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  currentUserText: {
+    fontSize: 14,
+    color: '#3b82f6',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  createButton: {
+    backgroundColor: '#16a34a',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  createButtonText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
+    lineHeight: 24,
+  },
+  switchUserButton: {
+    backgroundColor: '#f3f4f6',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  switchUserIcon: {
+    fontSize: 16,
+  },
+})
