@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "golf-scheduler-mobile",
+    "name": "Bellewood Golf Crew",
     "slug": "golf-scheduler-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,17 +13,44 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mhornak.bellewood-golf-crew",
+      "buildNumber": "1",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "tel",
+          "mailto",
+          "tel",
+          "mailto"
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSExceptionDomains": {
+            "main.d2m423juctwnaf.amplifyapp.com": {
+              "NSExceptionAllowsInsecureHTTPLoads": false,
+              "NSExceptionMinimumTLSVersion": "1.2"
+            }
+          }
+        },
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.mhornak.bellewood_golf_crew"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "owner": "mhornak",
+    "extra": {
+      "eas": {
+        "projectId": "3b321766-90d0-4692-aa1c-cd083eba4a9a"
+      }
     }
   }
 }

@@ -1,5 +1,6 @@
 // Platform-agnostic API utilities for golf scheduler
 // These functions work identically in React Native
+// Includes intelligent retry logic for Aurora Serverless cold starts
 
 export interface User {
   id: string
@@ -50,7 +51,60 @@ const getApiBaseUrl = () => {
   return 'https://main.d2m423juctwnaf.amplifyapp.com'
 }
 
-// Generic API request handler
+// Retry configuration for Aurora Serverless cold starts
+const RETRY_CONFIG = {
+  maxRetries: 4,
+  baseDelayMs: 1500,
+  maxDelayMs: 15000,
+  backoffMultiplier: 2,
+  // Errors that indicate Aurora is starting up or network issues
+  retryableErrors: [
+    'Network request failed',
+    'fetch failed', 
+    'timeout',
+    'ECONNRESET',
+    'ETIMEDOUT',
+    'Failed to fetch',
+    'NetworkError',
+    'TypeError: fetch failed',
+    'TypeError: Network request failed',
+    'Load failed',
+    'Connection failed',
+    'Request timeout',
+    'Service Unavailable'
+  ]
+}
+
+// Sleep utility for delays
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
+
+// Check if error is likely due to Aurora cold start
+const isRetryableError = (error: any, response?: Response): boolean => {
+  const errorMessage = error?.message?.toLowerCase() || ''
+  
+  // Check for network/fetch errors
+  const hasRetryableMessage = RETRY_CONFIG.retryableErrors.some(retryableError => 
+    errorMessage.includes(retryableError.toLowerCase())
+  )
+  
+  // Check for HTTP status codes that indicate server issues (not client errors)
+  const hasRetryableStatus = response && (
+    response.status === 502 || // Bad Gateway
+    response.status === 503 || // Service Unavailable  
+    response.status === 504 || // Gateway Timeout
+    response.status === 0      // Network error
+  )
+  
+  return hasRetryableMessage || hasRetryableStatus || false
+}
+
+// Calculate delay with exponential backoff
+const calculateDelay = (attempt: number): number => {
+  const delay = RETRY_CONFIG.baseDelayMs * Math.pow(RETRY_CONFIG.backoffMultiplier, attempt)
+  return Math.min(delay, RETRY_CONFIG.maxDelayMs)
+}
+
+// Generic API request handler with intelligent retry
 const apiRequest = async <T>(
   endpoint: string,
   options: RequestInit = {}
@@ -65,27 +119,63 @@ const apiRequest = async <T>(
     ...options,
   }
 
-  console.log('🌐 Making API request to:', url)
-  console.log('📋 Request options:', defaultOptions)
+  let lastError: any
+  let lastResponse: Response | undefined
   
-  try {
-    const response = await fetch(url, defaultOptions)
-    console.log('📡 Response status:', response.status)
-    console.log('📡 Response headers:', response.headers)
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-      console.error('❌ API Error:', errorData)
-      throw new Error(errorData.error || `HTTP ${response.status}`)
-    }
+  for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        const delay = calculateDelay(attempt - 1)
+        console.log(`⏳ Retrying in ${delay}ms (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1})...`)
+        await sleep(delay)
+      }
+      
+      console.log(`🌐 Making API request to: ${url} (attempt ${attempt + 1})`)
+      console.log('📋 Request options:', defaultOptions)
+      
+      const response = await fetch(url, defaultOptions)
+      lastResponse = response
+      console.log('📡 Response status:', response.status)
+      console.log('📡 Response headers:', response.headers)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('❌ API Error:', errorData)
+        const error = new Error(errorData.error || `HTTP ${response.status}`)
+        
+        // Check if this HTTP error is retryable (server issues)
+        if (!isRetryableError(error, response) || attempt === RETRY_CONFIG.maxRetries) {
+          throw error
+        }
+        
+        console.log('🔄 Server error appears retryable, will retry...')
+        lastError = error
+        continue
+      }
 
-    const data = await response.json()
-    console.log('✅ API Success:', endpoint)
-    return data
-  } catch (error) {
-    console.error('🚨 Network Error:', error)
-    throw error
+      const data = await response.json()
+      if (attempt > 0) {
+        console.log(`✅ API Success after ${attempt + 1} attempts:`, endpoint)
+      } else {
+        console.log('✅ API Success:', endpoint)
+      }
+      return data
+      
+    } catch (error) {
+      lastError = error
+      console.error(`🚨 Network Error (attempt ${attempt + 1}):`, error)
+      
+      // Don't retry if this isn't a retryable error or we're at max retries
+      if (!isRetryableError(error, lastResponse) || attempt === RETRY_CONFIG.maxRetries) {
+        break
+      }
+      
+      console.log('🔄 Error appears to be Aurora cold start, will retry...')
+    }
   }
+  
+  console.error('💥 All retry attempts failed')
+  throw lastError
 }
 
 // User API functions
