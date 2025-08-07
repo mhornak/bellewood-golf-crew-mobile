@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Alert, TextInput } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Alert, TextInput, Share } from 'react-native'
 import { format } from 'date-fns'
-import * as Clipboard from 'expo-clipboard'
 import { useSessionResponse } from '../hooks/useSessionResponse'
 import { golfUtils, type GolfSession } from '../lib/api'
 
@@ -61,11 +60,11 @@ export default function SessionCard({
   // Use filtered stats for grouping text
   const filteredGroupingText = golfUtils.getGroupingText(filteredResponseStats.inCount)
 
-  // Handle copying session status to clipboard (React Native compatible)
-  const handleCopyStatus = async () => {
+  // Handle sharing session status via iOS Share Sheet
+  const handleShareStatus = async () => {
     try {
-      const sessionDate = format(new Date(session.date), 'PPP p')
-      let message = `🏌️ ${session.title}\n📅 ${sessionDate}\n\n`
+      const sessionDate = format(new Date(session.date), 'PPPP')
+      let message = `🏌️‍♂️ ${session.title}\n📅 ${sessionDate}\n\n`
 
       // Filter users based on session tags
       const filteredUsers = golfUtils.filterUsersBySessionTags(users, session)
@@ -89,10 +88,22 @@ export default function SessionCard({
 
       message += `\n\nUpdate your status in the App!`
 
-      await Clipboard.setStringAsync(message)
-      Alert.alert('✅ Copied!', 'Status copied to clipboard. Paste in your group chat!')
+      const result = await Share.share({
+        message: message,
+        title: `${session.title} Golf Status`,
+      })
+
+      // Optional: Handle different share results
+      if (result.action === Share.sharedAction) {
+        // User shared successfully
+        console.log('Status shared successfully')
+      } else if (result.action === Share.dismissedAction) {
+        // User dismissed the share sheet
+        console.log('Share dismissed')
+      }
     } catch (err) {
-      Alert.alert('❌ Error', 'Failed to copy status to clipboard')
+      console.error('Error sharing status:', err)
+      Alert.alert('❌ Error', 'Failed to share status')
     }
   }
 
@@ -139,9 +150,6 @@ export default function SessionCard({
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>{session.title}</Text>
-          <View style={styles.titleRightSide}>
-            <Text style={styles.inlineFoursomeText}>{filteredGroupingText}</Text>
-          </View>
         </View>
         <View style={styles.dateRow}>
           {isUpcoming && !isPastSession && (
@@ -291,12 +299,17 @@ export default function SessionCard({
             </View>
           )
         })}
+        
+        {/* Foursome Calculation - Moved from Header */}
+        <View style={styles.foursomeInfo}>
+          <Text style={styles.foursomeText}>{filteredGroupingText}</Text>
+        </View>
       </View>
 
       {/* Share Group Status Button - Moved to Bottom */}
       {!isPastSession && currentUserCanParticipate && (
-        <TouchableOpacity style={styles.copyButton} onPress={handleCopyStatus}>
-          <Text style={styles.copyButtonText}>📋 Share Group Status</Text>
+        <TouchableOpacity style={styles.shareButton} onPress={handleShareStatus}>
+          <Text style={styles.shareButtonText}>📤 Share Group Status</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -336,16 +349,7 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     flex: 1,
   },
-  titleRightSide: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  inlineFoursomeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
+
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -492,17 +496,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  copyButton: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 8,
-    padding: 14,
+  shareButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
     marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  copyButtonText: {
+  shareButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+    letterSpacing: 0.5,
   },
   tagsSection: {
     flexDirection: 'row',
@@ -558,5 +571,17 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontStyle: 'italic',
     flex: 1,
+  },
+  foursomeInfo: {
+    marginTop: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    padding: 8,
+    alignItems: 'center',
+  },
+  foursomeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
   },
 })
