@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react'
-import { sessionApi, golfUtils, type GolfSession, type ResponseStatus } from '../lib/api'
+import { sessionApi, golfUtils, type GolfSession, type ResponseStatus, type TransportType } from '../lib/api'
 
 // Custom hook for managing user responses to golf sessions
 // This hook will work identically in React Native
 export const useSessionResponse = (
   session: GolfSession,
   onSessionUpdate: () => void,
-  submitResponse: (sessionId: string, responseData: { userId: string; status: 'IN' | 'OUT' | 'UNDECIDED'; note?: string }) => Promise<{ success: boolean; response?: any; error?: string }>,
+  submitResponse: (sessionId: string, responseData: { userId: string; status: 'IN' | 'OUT' | 'UNDECIDED'; note?: string; transport?: TransportType }) => Promise<{ success: boolean; response?: any; error?: string }>,
   deleteResponse: (sessionId: string, userId: string) => Promise<{ success: boolean; deletedResponse?: any; error?: string }>
 ) => {
   const [editingNotes, setEditingNotes] = useState<{ [userId: string]: string }>({})
@@ -14,7 +14,7 @@ export const useSessionResponse = (
   const [error, setError] = useState<string | null>(null)
   
   // Optimistic updates - local state for immediate UI updates
-  const [optimisticResponses, setOptimisticResponses] = useState<{ [userId: string]: { status: ResponseStatus; note: string } }>({})
+  const [optimisticResponses, setOptimisticResponses] = useState<{ [userId: string]: { status: ResponseStatus; note: string; transport: TransportType } }>({})
 
   // Get user's current response or return null
   // Check optimistic updates first, then fall back to session data
@@ -25,6 +25,7 @@ export const useSessionResponse = (
         id: serverResponse?.id || `optimistic-${userId}`,
         status: optimisticResponses[userId].status,
         note: optimisticResponses[userId].note,
+        transport: optimisticResponses[userId].transport,
         user: serverResponse?.user || { id: userId, nickname: '' },
       }
     }
@@ -42,6 +43,7 @@ export const useSessionResponse = (
       
       const currentResponse = getUserResponse(userId)
       const note = currentResponse?.note || ''
+      const transport = currentResponse?.transport || 'WALKING' // Default to walking
       
       // Toggle behavior: if clicking the same status, remove the response
       const shouldRemoveResponse = currentResponse?.status === status
@@ -75,7 +77,7 @@ export const useSessionResponse = (
         // Set/update response (normal behavior)
         setOptimisticResponses(prev => ({
           ...prev,
-          [userId]: { status, note }
+          [userId]: { status, note, transport }
         }))
         
         // Background API call using the passed submitResponse function
@@ -83,6 +85,7 @@ export const useSessionResponse = (
           userId,
           status,
           note,
+          transport,
         })
 
         if (result.success) {
@@ -128,12 +131,13 @@ export const useSessionResponse = (
       
       const currentResponse = getUserResponse(userId)
       const status = currentResponse?.status || 'UNDECIDED'
+      const transport = currentResponse?.transport || 'WALKING'
       const trimmedNote = note.trim()
       
       // Optimistic update - immediate UI change
       setOptimisticResponses(prev => ({
         ...prev,
-        [userId]: { status, note: trimmedNote }
+        [userId]: { status, note: trimmedNote, transport }
       }))
       
       // Background API call using the passed submitResponse function
@@ -141,6 +145,7 @@ export const useSessionResponse = (
         userId,
         status,
         note: trimmedNote,
+        transport,
       })
 
       if (result.success) {
@@ -168,6 +173,64 @@ export const useSessionResponse = (
       return { success: false, error: message }
     }
   }, [session.id, getUserResponse])
+
+  // Handle transport change - optimistic update with background save
+  const handleTransportChange = useCallback(async (userId: string, transport: TransportType) => {
+    try {
+      setError(null)
+      
+      const currentResponse = getUserResponse(userId)
+      const status = currentResponse?.status || 'UNDECIDED'
+      const note = currentResponse?.note || ''
+      
+      // Optimistic update - immediate UI change
+      setOptimisticResponses(prev => ({
+        ...prev,
+        [userId]: { status, note, transport }
+      }))
+      
+      // Background API call using the passed submitResponse function
+      const result = await submitResponse(session.id, {
+        userId,
+        status,
+        note,
+        transport,
+      })
+
+      if (result.success) {
+        // Session state is already updated by useGolfSessions.submitResponse
+        // Delay clearing optimistic update to ensure server data has propagated
+        setTimeout(() => {
+          setOptimisticResponses(prev => {
+            const newState = { ...prev }
+            delete newState[userId]
+            return newState
+          })
+        }, 100)
+      } else {
+        // Revert optimistic update on error
+        setOptimisticResponses(prev => {
+          const newState = { ...prev }
+          delete newState[userId]
+          return newState
+        })
+      }
+      
+      return result
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update transport'
+      setError(message)
+      
+      // Revert optimistic update on error
+      setOptimisticResponses(prev => {
+        const newState = { ...prev }
+        delete newState[userId]
+        return newState
+      })
+      
+      return { success: false, error: message }
+    }
+  }, [session.id, getUserResponse, submitResponse])
 
   // Handle note key press (Enter to save)
   const handleNoteKeyPress = useCallback((
@@ -210,6 +273,7 @@ export const useSessionResponse = (
           ...response,
           status: optimisticResponses[response.user.id].status,
           note: optimisticResponses[response.user.id].note,
+          transport: optimisticResponses[response.user.id].transport,
         }
       }
       return response
@@ -262,6 +326,7 @@ export const useSessionResponse = (
     getUserResponse,
     handleStatusClick,
     handleNoteChange,
+    handleTransportChange,
     handleNoteKeyPress,
     handleNoteBlur,
     updateEditingNote,

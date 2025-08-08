@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Platform } from 'react-native'
+import { Calendar } from 'react-native-calendars'
 import DateTimePicker from '@react-native-community/datetimepicker'
 
 interface Tag {
@@ -21,6 +22,7 @@ interface User {
 interface SessionFormData {
   title: string
   date: string
+  time: string
   description: string
   createdById: string
   tagIds: string[]
@@ -41,7 +43,8 @@ export default function SessionFormFields({
 }: SessionFormFieldsProps) {
   const [availableTags, setAvailableTags] = useState<Tag[]>([])
   const [loadingTags, setLoadingTags] = useState(false)
-  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [showTimePicker, setShowTimePicker] = useState(false)
 
   // Fetch available tags
   useEffect(() => {
@@ -87,20 +90,78 @@ export default function SessionFormFields({
     return tomorrow.toISOString().split('T')[0]
   }
 
-  // Handle date picker change
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios')
-    if (selectedDate) {
-      const dateString = selectedDate.toISOString().split('T')[0]
-      updateField('date', dateString)
+  // Handle calendar date selection
+  const handleCalendarDayPress = (day: any) => {
+    updateField('date', day.dateString)
+    setShowCalendar(false) // Hide calendar after selection
+  }
+
+  // Get marked dates for calendar
+  const getMarkedDates = () => {
+    if (!formData.date) return {}
+    
+    return {
+      [formData.date]: {
+        selected: true,
+        selectedColor: '#22c55e', // Green to match your app
+        selectedTextColor: 'white'
+      }
     }
   }
 
-  // Get Date object from string for picker
-  const getDateFromString = (dateString: string): Date => {
-    if (!dateString) return new Date()
-    const date = new Date(dateString + 'T00:00:00.000Z')
-    return isNaN(date.getTime()) ? new Date() : date
+  // Get minimum date (today)
+  const getMinDate = () => {
+    return new Date().toISOString().split('T')[0]
+  }
+
+  // Handle time picker change
+  const handleTimeChange = (event: any, selectedTime?: Date) => {
+    setShowTimePicker(Platform.OS === 'ios')
+    if (selectedTime) {
+      // Round to nearest 15 minutes
+      const roundedTime = roundToNearest15Minutes(selectedTime)
+      const timeString = roundedTime.toTimeString().slice(0, 5) // HH:MM format
+      updateField('time', timeString)
+    }
+  }
+
+  // Round time to nearest 15-minute increment
+  const roundToNearest15Minutes = (date: Date) => {
+    const minutes = date.getMinutes()
+    const roundedMinutes = Math.round(minutes / 15) * 15
+    const newDate = new Date(date)
+    newDate.setMinutes(roundedMinutes)
+    newDate.setSeconds(0)
+    newDate.setMilliseconds(0)
+    return newDate
+  }
+
+  // Get Date object from time string for picker
+  const getTimeFromString = (timeString: string): Date => {
+    if (!timeString) {
+      const defaultTime = new Date()
+      defaultTime.setHours(10, 0, 0, 0) // 10:00 AM
+      return defaultTime
+    }
+    const [hours, minutes] = timeString.split(':')
+    const time = new Date()
+    time.setHours(parseInt(hours), parseInt(minutes), 0, 0)
+    return time
+  }
+
+  // Format time for 12-hour display
+  const formatTimeFor12Hour = (time24: string) => {
+    if (!time24) return 'Select Time'
+    const [hours, minutes] = time24.split(':')
+    const hour12 = parseInt(hours)
+    const ampm = hour12 >= 12 ? 'PM' : 'AM'
+    const displayHour = hour12 === 0 ? 12 : hour12 > 12 ? hour12 - 12 : hour12
+    return `${displayHour}:${minutes} ${ampm}`
+  }
+
+  // Get default time (10:00 AM)
+  const getDefaultTime = () => {
+    return '10:00'
   }
 
   // Format date for display
@@ -120,6 +181,9 @@ export default function SessionFormFields({
   useEffect(() => {
     if (!formData.date) {
       updateField('date', getTomorrowDate())
+    }
+    if (!formData.time) {
+      updateField('time', getDefaultTime())
     }
     if (!formData.createdById) {
       updateField('createdById', currentUserId)
@@ -142,12 +206,12 @@ export default function SessionFormFields({
         />
       </View>
 
-      {/* Golf Date */}
+      {/* Date */}
       <View style={styles.fieldContainer}>
-        <Text style={styles.label}>Golf Date *</Text>
+        <Text style={styles.label}>Date *</Text>
         <TouchableOpacity
           style={styles.dateButton}
-          onPress={() => setShowDatePicker(true)}
+          onPress={() => setShowCalendar(!showCalendar)}
         >
           <Text style={[
             styles.dateButtonText,
@@ -157,15 +221,68 @@ export default function SessionFormFields({
           </Text>
           <Text style={styles.dateButtonIcon}>📅</Text>
         </TouchableOpacity>
-        <Text style={styles.helpText}>Tap to select date (defaults to tomorrow)</Text>
+        <Text style={styles.helpText}>
+          {showCalendar ? 'Tap a date to select' : 'Tap to view calendar'}
+        </Text>
         
-        {showDatePicker && (
+        {showCalendar && (
+          <View style={styles.calendarContainer}>
+            <Calendar
+              minDate={getMinDate()}
+              onDayPress={handleCalendarDayPress}
+              markedDates={getMarkedDates()}
+              theme={{
+                backgroundColor: '#ffffff',
+                calendarBackground: '#ffffff',
+                textSectionTitleColor: '#b6c1cd',
+                selectedDayBackgroundColor: '#22c55e',
+                selectedDayTextColor: '#ffffff',
+                todayTextColor: '#22c55e',
+                dayTextColor: '#2d4150',
+                textDisabledColor: '#d9e1e8',
+                arrowColor: '#22c55e',
+                disabledArrowColor: '#d9e1e8',
+                monthTextColor: '#2d4150',
+                indicatorColor: '#22c55e',
+                textDayFontWeight: '500',
+                textMonthFontWeight: '600',
+                textDayHeaderFontWeight: '600',
+                textDayFontSize: 16,
+                textMonthFontSize: 18,
+                textDayHeaderFontSize: 14
+              }}
+              style={styles.calendar}
+            />
+          </View>
+        )}
+      </View>
+
+      {/* Time */}
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Time *</Text>
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => setShowTimePicker(!showTimePicker)}
+        >
+          <Text style={[
+            styles.dateButtonText,
+            !formData.time && styles.dateButtonPlaceholder
+          ]}>
+            {formData.time ? formatTimeFor12Hour(formData.time) : 'Select Time'}
+          </Text>
+          <Text style={styles.dateButtonIcon}>🕐</Text>
+        </TouchableOpacity>
+        <Text style={styles.helpText}>
+          {showTimePicker ? 'Select time and it will round to 15-minute increments' : 'Tap to select time'}
+        </Text>
+        
+        {showTimePicker && (
           <DateTimePicker
-            value={getDateFromString(formData.date)}
-            mode="date"
+            value={getTimeFromString(formData.time)}
+            mode="time"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={handleDateChange}
-            minimumDate={new Date()}
+            onChange={handleTimeChange}
+            minuteInterval={15}
           />
         )}
       </View>
@@ -413,5 +530,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
     marginTop: 8,
+  },
+  calendarContainer: {
+    marginTop: 12,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  calendar: {
+    borderRadius: 12,
   },
 })

@@ -25,6 +25,7 @@ export interface GolfSession {
     id: string
     status: 'IN' | 'OUT' | 'UNDECIDED'
     note?: string
+    transport?: 'WALKING' | 'RIDING'
     user: {
       id: string
       nickname: string
@@ -44,6 +45,7 @@ export interface GolfSession {
 }
 
 export type ResponseStatus = 'IN' | 'OUT' | 'UNDECIDED'
+export type TransportType = 'WALKING' | 'RIDING'
 
 // API Base URL - can be environment specific
 const getApiBaseUrl = () => {
@@ -254,10 +256,12 @@ export const sessionApi = {
     userId: string
     status: ResponseStatus
     note?: string
+    transport?: TransportType
   }): Promise<{
     id: string
     status: ResponseStatus
     note?: string
+    transport?: TransportType
     user: { id: string; nickname: string }
   }> =>
     apiRequest(`/api/sessions/${sessionId}/responses`, {
@@ -272,6 +276,7 @@ export const sessionApi = {
       id: string
       status: ResponseStatus
       note?: string
+      transport?: TransportType
       user: { id: string; nickname: string }
     }
   }> =>

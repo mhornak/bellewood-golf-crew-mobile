@@ -8,6 +8,7 @@ import {
   Alert,
   RefreshControl,
   TouchableOpacity,
+  Linking,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import SessionCard from './src/components/SessionCard'
@@ -66,6 +67,43 @@ export default function App() {
 
     loadStoredUser()
   }, [])
+
+  // Handle deep links
+  useEffect(() => {
+    const handleDeepLink = (url: string) => {
+      console.log('🔗 Deep link received:', url)
+      
+      // Parse the deep link: bellewoodgolf://session/SESSION_ID
+      const sessionMatch = url.match(/bellewoodgolf:\/\/session\/(.+)/)
+      if (sessionMatch) {
+        const sessionId = sessionMatch[1]
+        console.log('📍 Navigating to session:', sessionId)
+        
+        // Find the session and ensure it's visible
+        const targetSession = sessions.find(s => s.id === sessionId)
+        if (targetSession) {
+          // Session found - the carousel will automatically show it
+          Alert.alert('🎯 Session Found!', `Opened ${targetSession.title}`)
+        } else {
+          Alert.alert('❌ Session Not Found', 'The session may no longer exist or you may not have access to it.')
+        }
+      }
+    }
+
+    // Listen for deep links when app is already open
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url)
+    })
+
+    // Handle deep link if app was opened from a link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url)
+      }
+    })
+
+    return () => subscription?.remove()
+  }, [sessions])
 
   // Wait for users to load before showing selection
   useEffect(() => {
@@ -167,7 +205,6 @@ export default function App() {
         <View style={styles.headerContent}>
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>🏌️ Bellewood Golf</Text>
-            <Text style={styles.headerSubtitle}>See who's in for the next round!</Text>
             {currentUser && (
               <Text style={styles.currentUserText}>Playing as: {currentUser.nickname}</Text>
             )}
@@ -241,11 +278,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#1f2937',
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginTop: 4,
   },
   currentUserText: {
     fontSize: 14,

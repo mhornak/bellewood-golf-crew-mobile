@@ -79,6 +79,7 @@ export const useGolfSessions = () => {
     userId: string
     status: 'IN' | 'OUT' | 'UNDECIDED'
     note?: string
+    transport?: 'WALKING' | 'RIDING'
   }) => {
     try {
       const response = await sessionApi.submitResponse(sessionId, responseData)

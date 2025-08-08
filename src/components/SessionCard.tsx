@@ -8,7 +8,7 @@ interface SessionCardProps {
   session: GolfSession
   users: Array<{ id: string; name: string; nickname: string }>
   onResponseUpdate: () => void
-  submitResponse: (sessionId: string, responseData: { userId: string; status: 'IN' | 'OUT' | 'UNDECIDED'; note?: string }) => Promise<{ success: boolean; response?: any; error?: string }>
+  submitResponse: (sessionId: string, responseData: { userId: string; status: 'IN' | 'OUT' | 'UNDECIDED'; note?: string; transport?: 'WALKING' | 'RIDING' }) => Promise<{ success: boolean; response?: any; error?: string }>
   deleteResponse: (sessionId: string, userId: string) => Promise<{ success: boolean; deletedResponse?: any; error?: string }>
   currentUserId: string
   isUpcoming?: boolean
@@ -28,6 +28,7 @@ export default function SessionCard({
   const {
     getUserResponse,
     handleStatusClick,
+    handleTransportChange,
     isSubmitting,
   } = useSessionResponse(session, onResponseUpdate, submitResponse, deleteResponse)
 
@@ -60,11 +61,11 @@ export default function SessionCard({
   // Use filtered stats for grouping text
   const filteredGroupingText = golfUtils.getGroupingText(filteredResponseStats.inCount)
 
-  // Handle sharing session status via iOS Share Sheet
+  // Handle sharing session status (React Native compatible)
   const handleShareStatus = async () => {
     try {
-      const sessionDate = format(new Date(session.date), 'PPPP')
-      let message = `🏌️‍♂️ ${session.title}\n📅 ${sessionDate}\n\n`
+      const sessionDate = format(new Date(session.date), 'PPP p')
+      let message = `🏌️ ${session.title}\n📅 ${sessionDate}\n\n`
 
       // Filter users based on session tags
       const filteredUsers = golfUtils.filterUsersBySessionTags(users, session)
@@ -86,23 +87,14 @@ export default function SessionCard({
       else if (inCount === 4) message += `\n🏌️ 1 foursome`
       else if (inCount > 0) message += `\n📊 ${inCount} players confirmed`
 
-      message += `\n\nUpdate your status in the App!`
+      // Add deep link to open the app
+      message += `\n\n📱 Update your status: bellewoodgolf://session/${session.id}`
 
-      const result = await Share.share({
+      await Share.share({
         message: message,
-        title: `${session.title} Golf Status`,
+        title: `${session.title} - Golf Status Update`
       })
-
-      // Optional: Handle different share results
-      if (result.action === Share.sharedAction) {
-        // User shared successfully
-        console.log('Status shared successfully')
-      } else if (result.action === Share.dismissedAction) {
-        // User dismissed the share sheet
-        console.log('Share dismissed')
-      }
     } catch (err) {
-      console.error('Error sharing status:', err)
       Alert.alert('❌ Error', 'Failed to share status')
     }
   }
@@ -148,24 +140,25 @@ export default function SessionCard({
     ]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>{session.title}</Text>
-        </View>
-        <View style={styles.dateRow}>
-          {isUpcoming && !isPastSession && (
-            <View style={styles.upcomingBadge}>
-              <Text style={styles.upcomingBadgeText}>🎯 Next Up</Text>
-            </View>
-          )}
+        {/* Session Title */}
+        <Text style={styles.title}>{session.title}</Text>
+        
+        {/* Date, Time, and Creator */}
+        <View style={styles.dateTimeRow}>
           {isPastSession && (
             <View style={styles.pastBadge}>
               <Text style={styles.pastBadgeText}>Past</Text>
             </View>
           )}
-          <Text style={styles.date}>
-            {format(new Date(session.date), 'EEE, MMM d')} • {session.createdBy.nickname}
+          <Text style={styles.dateTime}>
+            {format(new Date(session.date), 'EEEE, MMMM d, yyyy \'at\' h:mm a')} • Created by {session.createdBy.nickname}
           </Text>
         </View>
+        
+        {/* Description */}
+        {session.description && (
+          <Text style={styles.description}>{session.description}</Text>
+        )}
       </View>
 
       {/* Current User Status */}
@@ -236,6 +229,47 @@ export default function SessionCard({
               </TouchableOpacity>
             </View>
 
+            {/* Transport Radio Buttons */}
+            {!isPastSession && currentUserResponse?.status && (
+              <View style={styles.transportSection}>
+                <View style={styles.transportButtons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.transportButton,
+                      (!currentUserResponse?.transport || currentUserResponse?.transport === 'WALKING') && styles.activeTransportButton
+                    ]}
+                    onPress={() => handleTransportChange(currentUserId, 'WALKING')}
+                    disabled={isSubmitting(currentUserId)}
+                  >
+                    <Text style={styles.transportEmoji}>🚶</Text>
+                    <Text style={[
+                      styles.transportText,
+                      (!currentUserResponse?.transport || currentUserResponse?.transport === 'WALKING') && styles.activeTransportText
+                    ]}>
+                      Walking
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.transportButton,
+                      currentUserResponse?.transport === 'RIDING' && styles.activeTransportButton
+                    ]}
+                    onPress={() => handleTransportChange(currentUserId, 'RIDING')}
+                    disabled={isSubmitting(currentUserId)}
+                  >
+                    <Text style={styles.transportEmoji}>🛺</Text>
+                    <Text style={[
+                      styles.transportText,
+                      currentUserResponse?.transport === 'RIDING' && styles.activeTransportText
+                    ]}>
+                      Riding
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             {!isPastSession && (
               <View style={styles.commentSection}>
                 <View style={styles.commentRow}>
@@ -285,12 +319,13 @@ export default function SessionCard({
           const statusEmoji = userResponse?.status === 'IN' ? '✅' : 
                              userResponse?.status === 'OUT' ? '❌' : 
                              userResponse?.status === 'UNDECIDED' ? '❓' : '⚪'
+          const transportEmoji = userResponse?.transport === 'RIDING' ? '🛺' : '🚶'
           
           return (
             <View key={user.id} style={styles.userRow}>
               <View style={styles.userInfo}>
                 <Text style={styles.userText}>
-                  {statusEmoji} {user.nickname}
+                  {statusEmoji} {user.nickname} {userResponse?.status ? `• ${transportEmoji}` : ''}
                 </Text>
                 {userResponse?.note && (
                   <Text style={styles.noteText}>• {userResponse.note}</Text>
@@ -300,16 +335,32 @@ export default function SessionCard({
           )
         })}
         
-        {/* Foursome Calculation - Moved from Header */}
-        <View style={styles.foursomeInfo}>
+        {/* Foursome Display at Bottom */}
+        <View style={styles.foursomeDisplay}>
           <Text style={styles.foursomeText}>{filteredGroupingText}</Text>
+          {(() => {
+            const inResponses = session.responses.filter(r => 
+              filteredUsers.some(u => u.id === r.user.id) && r.status === 'IN'
+            )
+            const walkingCount = inResponses.filter(r => (r.transport || 'WALKING') === 'WALKING').length
+            const ridingCount = inResponses.filter(r => r.transport === 'RIDING').length
+            
+            if (inResponses.length > 0) {
+              return (
+                <Text style={styles.transportBreakdown}>
+                  🚶 {walkingCount} walking • 🛺 {ridingCount} riding
+                </Text>
+              )
+            }
+            return null
+          })()}
         </View>
       </View>
 
       {/* Share Group Status Button - Moved to Bottom */}
       {!isPastSession && currentUserCanParticipate && (
-        <TouchableOpacity style={styles.shareButton} onPress={handleShareStatus}>
-          <Text style={styles.shareButtonText}>📤 Share Group Status</Text>
+        <TouchableOpacity style={styles.copyButton} onPress={handleShareStatus}>
+          <Text style={styles.copyButtonText}>📤 Share Group Status</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -335,29 +386,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#fafbff',
   },
   header: {
-    marginBottom: 12,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 16,
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#1f2937',
-    flex: 1,
+    marginBottom: 8,
   },
-
-  dateRow: {
+  dateTimeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 8,
   },
-  date: {
+  dateTime: {
     fontSize: 14,
     color: '#6b7280',
+    flex: 1,
+  },
+  description: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
   },
   pastBadge: {
     backgroundColor: '#f3f4f6',
@@ -369,17 +420,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#6b7280',
     fontWeight: '500',
-  },
-  upcomingBadge: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  upcomingBadgeText: {
-    fontSize: 10,
-    color: 'white',
-    fontWeight: '600',
   },
   stats: {
     backgroundColor: '#f9fafb',
@@ -496,26 +536,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  shareButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    padding: 16,
+  copyButton: {
+    backgroundColor: '#3b82f6',
+    borderRadius: 8,
+    padding: 14,
     alignItems: 'center',
     marginTop: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  shareButtonText: {
+  copyButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
-    letterSpacing: 0.5,
   },
   tagsSection: {
     flexDirection: 'row',
@@ -572,16 +603,56 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     flex: 1,
   },
-  foursomeInfo: {
+  foursomeDisplay: {
     marginTop: 12,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    padding: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
     alignItems: 'center',
   },
   foursomeText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
+  },
+  transportBreakdown: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  transportSection: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  transportButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  transportButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#f9fafb',
+    gap: 6,
+  },
+  activeTransportButton: {
+    borderColor: '#22c55e',
+    backgroundColor: '#f0fdf4',
+  },
+  transportEmoji: {
+    fontSize: 16,
+  },
+  transportText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  activeTransportText: {
+    color: '#16a34a',
   },
 })

@@ -11,6 +11,7 @@ interface User {
 interface SessionFormData {
   title: string
   date: string
+  time: string
   description: string
   createdById: string
   tagIds: string[]
@@ -32,6 +33,7 @@ export default function CreateSessionScreen({
   const [formData, setFormData] = useState<SessionFormData>({
     title: '',
     date: '',
+    time: '',
     description: '',
     createdById: currentUserId,
     tagIds: [],
@@ -44,7 +46,11 @@ export default function CreateSessionScreen({
       return false
     }
     if (!formData.date.trim()) {
-      Alert.alert('Validation Error', 'Golf date is required')
+      Alert.alert('Validation Error', 'Date is required')
+      return false
+    }
+    if (!formData.time.trim()) {
+      Alert.alert('Validation Error', 'Time is required')
       return false
     }
     
@@ -63,6 +69,9 @@ export default function CreateSessionScreen({
 
     setIsCreating(true)
     try {
+      // Combine date and time into ISO datetime string
+      const dateTimeString = `${formData.date}T${formData.time}:00.000Z`
+      
       const response = await fetch('https://main.d2m423juctwnaf.amplifyapp.com/api/sessions', {
         method: 'POST',
         headers: {
@@ -70,7 +79,7 @@ export default function CreateSessionScreen({
         },
         body: JSON.stringify({
           title: formData.title.trim(),
-          date: formData.date,
+          date: dateTimeString,
           description: formData.description.trim() || undefined,
           createdById: formData.createdById,
           tagIds: formData.tagIds,

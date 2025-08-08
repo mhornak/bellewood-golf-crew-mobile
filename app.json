@@ -7,6 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "scheme": "bellewoodgolf",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -19,8 +20,6 @@
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "tel",
-          "mailto",
-          "tel",
           "mailto"
         ],
         "NSAppTransportSecurity": {
@@ -31,8 +30,7 @@
               "NSExceptionMinimumTLSVersion": "1.2"
             }
           }
-        },
-        "ITSAppUsesNonExemptEncryption": false
+        }
       }
     },
     "android": {
@@ -46,11 +44,11 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "owner": "mhornak",
     "extra": {
       "eas": {
-        "projectId": "3b321766-90d0-4692-aa1c-cd083eba4a9a"
+        "projectId": "your-project-id-will-be-generated"
       }
-    }
+    },
+    "owner": "mhornak"
   }
 }
