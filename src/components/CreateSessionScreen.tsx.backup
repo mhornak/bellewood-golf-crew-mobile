@@ -70,24 +70,9 @@ export default function CreateSessionScreen({
     setIsCreating(true)
     try {
       // Combine date and time into ISO datetime string
-      // More explicit timezone handling
-      const [year, month, day] = formData.date.split('-');
-      const [hours, minutes] = formData.time.split(':');
-      const localDateTime = new Date(
-        parseInt(year), 
-        parseInt(month) - 1, // Month is 0-indexed
-        parseInt(day), 
-        parseInt(hours), 
-        parseInt(minutes)
-      );
-      const dateTimeString = localDateTime.toISOString();
-
-      console.log("DEBUG: Local time input:", formData.date, formData.time);
-      console.log("DEBUG: Created Date object:", localDateTime);
-      console.log("DEBUG: ISO string for API:", dateTimeString);
-      console.log('DEBUG: Local time input:', formData.date, formData.time);
-      console.log('DEBUG: Created Date object:', localDateTime);
-      console.log('DEBUG: ISO string for API:', dateTimeString);      
+      const localDateTime = new Date(`${formData.date}T${formData.time}:00`)
+      const dateTimeString = localDateTime.toISOString()
+      
       const response = await fetch('https://main.d2m423juctwnaf.amplifyapp.com/api/sessions', {
         method: 'POST',
         headers: {
