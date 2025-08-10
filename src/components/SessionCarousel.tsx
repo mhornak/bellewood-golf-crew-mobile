@@ -20,6 +20,8 @@ interface SessionCarouselProps {
   refreshing?: boolean
   onEditSession?: (session: GolfSession) => void
   onDeleteSession?: (session: GolfSession) => void
+  targetSessionId?: string | null
+  onTargetSessionFocused?: () => void
 }
 
 const { width: screenWidth } = Dimensions.get('window')
@@ -35,6 +37,8 @@ export default function SessionCarousel({
   refreshing = false,
   onEditSession,
   onDeleteSession,
+  targetSessionId,
+  onTargetSessionFocused,
 }: SessionCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [hasInitialized, setHasInitialized] = useState(false)
@@ -44,24 +48,43 @@ export default function SessionCarousel({
   // Sort sessions by date (upcoming first) - using platform-agnostic utility
   const sortedSessions = golfUtils.sortSessionsByDate(sessions)
 
-  // Find the upcoming session index and auto-focus on it
+  // Focus on target session (after create/edit) or find upcoming session
   useEffect(() => {
-    if (sortedSessions.length > 0 && !hasInitialized) {
-      const upcomingIndex = golfUtils.findUpcomingSessionIndex(sortedSessions)
-      setCurrentIndex(upcomingIndex)
-      setHasInitialized(true)
+    if (sortedSessions.length > 0) {
+      let targetIndex = 0
+
+      // Priority 1: Focus on specific session if targetSessionId is provided
+      if (targetSessionId) {
+        const sessionIndex = sortedSessions.findIndex(session => session.id === targetSessionId)
+        if (sessionIndex !== -1) {
+          targetIndex = sessionIndex
+          // Clear the target after focusing
+          onTargetSessionFocused?.()
+        }
+      } 
+      // Priority 2: Auto-focus on upcoming session (only on first load)
+      else if (!hasInitialized) {
+        targetIndex = golfUtils.findUpcomingSessionIndex(sortedSessions)
+        setHasInitialized(true)
+      } 
+      // Priority 3: Don't change focus if already initialized
+      else {
+        return
+      }
+
+      setCurrentIndex(targetIndex)
       
-      // Scroll to upcoming session after a brief delay to ensure the list is rendered
+      // Scroll to target session after a brief delay to ensure the list is rendered
       setTimeout(() => {
-        if (flatListRef.current && upcomingIndex < sortedSessions.length) {
+        if (flatListRef.current && targetIndex < sortedSessions.length) {
           flatListRef.current.scrollToIndex({ 
-            index: upcomingIndex, 
-            animated: false 
+            index: targetIndex, 
+            animated: targetSessionId ? true : false // Animate for target session, not for auto-focus
           })
         }
       }, 100)
     }
-  }, [sortedSessions, hasInitialized])
+  }, [sortedSessions, hasInitialized, targetSessionId, onTargetSessionFocused])
 
   // Handle scroll events to update current index
   const handleViewableItemsChanged = ({ viewableItems }: { viewableItems: ViewToken[] }) => {

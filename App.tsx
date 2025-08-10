@@ -30,6 +30,7 @@ export default function App() {
   // Session creation/editing state
   const [showCreateSession, setShowCreateSession] = useState(false)
   const [editingSession, setEditingSession] = useState<any>(null)
+  const [targetSessionId, setTargetSessionId] = useState<string | null>(null)
 
   // Use custom hooks for data management (same as web app)
   const { users, loading: usersLoading } = useUsers()
@@ -179,9 +180,10 @@ export default function App() {
     )
   }
 
-  const handleSessionCreated = () => {
+  const handleSessionCreated = (sessionId: string) => {
     setShowCreateSession(false)
     setEditingSession(null) // Clear editing state
+    setTargetSessionId(sessionId) // Remember which session to focus on
     fetchSessions() // Refresh the sessions list
   }
 
@@ -283,6 +285,8 @@ export default function App() {
         refreshing={refreshing}
         onEditSession={handleEditSession}
         onDeleteSession={handleDeleteSession}
+        targetSessionId={targetSessionId}
+        onTargetSessionFocused={() => setTargetSessionId(null)}
       />
     </SafeAreaView>
   )

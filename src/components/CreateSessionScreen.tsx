@@ -21,7 +21,7 @@ interface CreateSessionScreenProps {
   users: User[]
   currentUserId: string
   onCancel: () => void
-  onSessionCreated: () => void
+  onSessionCreated: (sessionId: string) => void
   editingSession?: any
 }
 
@@ -85,6 +85,9 @@ export default function CreateSessionScreen({
   const handleSubmitSession = async () => {
     if (!validateForm()) return
 
+    // Determine if we're editing or creating (move outside try block)
+    const isEditing = !!editingSession
+
     setIsCreating(true)
     try {
       // Combine date and time into ISO datetime string
@@ -103,9 +106,6 @@ export default function CreateSessionScreen({
       console.log("DEBUG: Local time input:", formData.date, formData.time);
       console.log("DEBUG: Created Date object:", localDateTime);
       console.log("DEBUG: ISO string for API:", dateTimeString);
-      
-      // Determine if we're editing or creating
-      const isEditing = !!editingSession
       const apiUrl = isEditing 
         ? `https://main.d2m423juctwnaf.amplifyapp.com/api/sessions/${editingSession.id}`
         : 'https://main.d2m423juctwnaf.amplifyapp.com/api/sessions'
@@ -129,10 +129,13 @@ export default function CreateSessionScreen({
         throw new Error(errorData.error || `HTTP ${response.status}`)
       }
 
+      const sessionData = await response.json()
+      const sessionId = sessionData.id || editingSession?.id // Get the session ID from response or existing session
+
       const successMessage = isEditing ? 'Golf session updated successfully' : 'Golf session created successfully'
       Alert.alert('Success!', successMessage, [
         { text: 'OK', onPress: () => {
-          onSessionCreated()
+          onSessionCreated(sessionId) // Pass the session ID back
         }}
       ])
     } catch (error) {
