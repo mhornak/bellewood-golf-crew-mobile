@@ -146,6 +146,39 @@ export default function App() {
     setShowCreateSession(true) // Reuse the same modal
   }
 
+  // Handle delete session
+  const handleDeleteSession = async (session: any) => {
+    Alert.alert(
+      'Delete Session',
+      `Are you sure you want to delete "${session.title}"?\n\nThis will remove the session and all player responses. This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await fetch(`https://main.d2m423juctwnaf.amplifyapp.com/api/sessions/${session.id}`, {
+                method: 'DELETE',
+              })
+
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+                throw new Error(errorData.error || `HTTP ${response.status}`)
+              }
+
+              Alert.alert('Success!', 'Session deleted successfully')
+              fetchSessions() // Refresh the sessions list
+            } catch (error) {
+              console.error('Error deleting session:', error)
+              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete session')
+            }
+          }
+        }
+      ]
+    )
+  }
+
   const handleSessionCreated = () => {
     setShowCreateSession(false)
     setEditingSession(null) // Clear editing state
@@ -249,6 +282,7 @@ export default function App() {
         onRefresh={onRefresh}
         refreshing={refreshing}
         onEditSession={handleEditSession}
+        onDeleteSession={handleDeleteSession}
       />
     </SafeAreaView>
   )

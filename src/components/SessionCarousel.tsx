@@ -19,6 +19,7 @@ interface SessionCarouselProps {
   onRefresh?: () => void
   refreshing?: boolean
   onEditSession?: (session: GolfSession) => void
+  onDeleteSession?: (session: GolfSession) => void
 }
 
 const { width: screenWidth } = Dimensions.get('window')
@@ -33,6 +34,7 @@ export default function SessionCarousel({
   onRefresh,
   refreshing = false,
   onEditSession,
+  onDeleteSession,
 }: SessionCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [hasInitialized, setHasInitialized] = useState(false)
@@ -99,6 +101,7 @@ export default function SessionCarousel({
           currentUserId={currentUserId}
           isUpcoming={index === 0} // First session is the upcoming one
           onEditSession={onEditSession}
+          onDeleteSession={onDeleteSession}
         />
       </ScrollView>
     )

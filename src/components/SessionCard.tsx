@@ -13,6 +13,7 @@ interface SessionCardProps {
   currentUserId: string
   isUpcoming?: boolean
   onEditSession?: (session: GolfSession) => void
+  onDeleteSession?: (session: GolfSession) => void
 }
 
 export default function SessionCard({
@@ -24,6 +25,7 @@ export default function SessionCard({
   currentUserId,
   isUpcoming = false,
   onEditSession,
+  onDeleteSession,
 }: SessionCardProps) {
   
   // Use custom hook for session response management (React Native compatible)
@@ -142,17 +144,27 @@ export default function SessionCard({
     ]}>
       {/* Header */}
       <View style={styles.header}>
-        {/* Session Title with Edit Button */}
+        {/* Session Title with Edit and Delete Buttons */}
         <View style={styles.titleRow}>
           <Text style={styles.title}>{session.title}</Text>
-          {onEditSession && !isPastSession && (
-            <TouchableOpacity 
-              style={styles.editButton}
-              onPress={() => onEditSession(session)}
-            >
-              <Text style={styles.editIcon}>✏️</Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.actionButtons}>
+            {onEditSession && !isPastSession && (
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => onEditSession(session)}
+              >
+                <Text style={styles.actionIcon}>✏️</Text>
+              </TouchableOpacity>
+            )}
+            {onDeleteSession && !isPastSession && (
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => onDeleteSession(session)}
+              >
+                <Text style={styles.actionIcon}>🗑️</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
         
         {/* Date, Time, and Creator */}
@@ -417,11 +429,15 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     flex: 1,
   },
-  editButton: {
-    padding: 8,
-    marginLeft: 8,
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  editIcon: {
+  actionButton: {
+    padding: 8,
+  },
+  actionIcon: {
     fontSize: 18,
   },
   dateTimeRow: {
