@@ -52,14 +52,22 @@ export default function SessionCarousel({
   useEffect(() => {
     if (sortedSessions.length > 0) {
       let targetIndex = 0
+      let isTargetSession = false
+
+      console.log('🎯 SessionCarousel: Focus logic running', {
+        targetSessionId,
+        hasInitialized,
+        sessionsCount: sortedSessions.length
+      })
 
       // Priority 1: Focus on specific session if targetSessionId is provided
       if (targetSessionId) {
         const sessionIndex = sortedSessions.findIndex(session => session.id === targetSessionId)
+        console.log('🔍 Looking for target session:', targetSessionId, 'found at index:', sessionIndex)
         if (sessionIndex !== -1) {
           targetIndex = sessionIndex
-          // Clear the target after focusing
-          onTargetSessionFocused?.()
+          isTargetSession = true
+          console.log('✅ Target session found, focusing on index:', targetIndex)
         }
       } 
       // Priority 2: Auto-focus on upcoming session (only on first load)
@@ -79,8 +87,15 @@ export default function SessionCarousel({
         if (flatListRef.current && targetIndex < sortedSessions.length) {
           flatListRef.current.scrollToIndex({ 
             index: targetIndex, 
-            animated: targetSessionId ? true : false // Animate for target session, not for auto-focus
+            animated: isTargetSession // Animate for target session, not for auto-focus
           })
+          
+          // Clear the target AFTER the scroll is complete (only for target sessions)
+          if (isTargetSession) {
+            setTimeout(() => {
+              onTargetSessionFocused?.()
+            }, isTargetSession ? 500 : 0) // Wait for animation to complete
+          }
         }
       }, 100)
     }

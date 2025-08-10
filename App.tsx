@@ -181,6 +181,7 @@ export default function App() {
   }
 
   const handleSessionCreated = (sessionId: string) => {
+    console.log('📱 App: Session created/edited, setting target:', sessionId)
     setShowCreateSession(false)
     setEditingSession(null) // Clear editing state
     setTargetSessionId(sessionId) // Remember which session to focus on
@@ -286,7 +287,10 @@ export default function App() {
         onEditSession={handleEditSession}
         onDeleteSession={handleDeleteSession}
         targetSessionId={targetSessionId}
-        onTargetSessionFocused={() => setTargetSessionId(null)}
+        onTargetSessionFocused={() => {
+          console.log('📱 App: Target session focused, clearing target')
+          setTargetSessionId(null)
+        }}
       />
     </SafeAreaView>
   )
