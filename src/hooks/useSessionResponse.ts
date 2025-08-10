@@ -43,7 +43,8 @@ export const useSessionResponse = (
       
       const currentResponse = getUserResponse(userId)
       const note = currentResponse?.note || ''
-      const transport = currentResponse?.transport || 'WALKING' // Default to walking
+      // Clear transport for OUT/MAYBE, preserve for IN
+      const transport = status === 'IN' ? (currentResponse?.transport || 'WALKING') : undefined
       
       // Toggle behavior: if clicking the same status, remove the response
       const shouldRemoveResponse = currentResponse?.status === status

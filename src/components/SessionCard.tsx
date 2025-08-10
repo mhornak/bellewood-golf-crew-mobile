@@ -319,13 +319,14 @@ export default function SessionCard({
           const statusEmoji = userResponse?.status === 'IN' ? '✅' : 
                              userResponse?.status === 'OUT' ? '❌' : 
                              userResponse?.status === 'UNDECIDED' ? '❓' : '⚪'
-          const transportEmoji = userResponse?.transport === 'RIDING' ? '🛺' : '🚶'
+          const transportEmoji = userResponse?.transport === 'RIDING' ? '🛺' : 
+                                userResponse?.transport === 'WALKING' ? '🚶' : ''
           
           return (
             <View key={user.id} style={styles.userRow}>
               <View style={styles.userInfo}>
                 <Text style={styles.userText}>
-                  {statusEmoji} {user.nickname} {userResponse?.status ? `• ${transportEmoji}` : ''}
+                  {statusEmoji} {user.nickname} {userResponse?.status === 'IN' && transportEmoji ? `• ${transportEmoji}` : ''}
                 </Text>
                 {userResponse?.note && (
                   <Text style={styles.noteText}>• {userResponse.note}</Text>
@@ -342,7 +343,7 @@ export default function SessionCard({
             const inResponses = session.responses.filter(r => 
               filteredUsers.some(u => u.id === r.user.id) && r.status === 'IN'
             )
-            const walkingCount = inResponses.filter(r => (r.transport || 'WALKING') === 'WALKING').length
+            const walkingCount = inResponses.filter(r => r.transport === 'WALKING').length
             const ridingCount = inResponses.filter(r => r.transport === 'RIDING').length
             
             if (inResponses.length > 0) {
