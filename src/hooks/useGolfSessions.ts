@@ -8,12 +8,12 @@ export const useGolfSessions = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch all sessions
+  // Fetch future sessions only (mobile optimized)
   const fetchSessions = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await sessionApi.getAll()
+      const data = await sessionApi.getAllFuture()
       setSessions(Array.isArray(data) ? data : [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch sessions')

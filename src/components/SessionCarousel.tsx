@@ -40,18 +40,9 @@ export default function SessionCarousel({
   const [hasInitialized, setHasInitialized] = useState(false)
   const flatListRef = useRef<FlatList>(null)
 
-  // Filter to show only current and future sessions (no past sessions on mobile)
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  
-  const currentAndFutureSessions = sessions.filter(session => {
-    const sessionDate = new Date(session.date)
-    const sessionDay = new Date(sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate())
-    return sessionDay >= today
-  })
-
+  // API now filters to only today + future sessions, just sort them
   // Sort sessions by date (upcoming first) - using platform-agnostic utility
-  const sortedSessions = golfUtils.sortSessionsByDate(currentAndFutureSessions)
+  const sortedSessions = golfUtils.sortSessionsByDate(sessions)
 
   // Find the upcoming session index and auto-focus on it
   useEffect(() => {

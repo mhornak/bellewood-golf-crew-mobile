@@ -217,6 +217,10 @@ export const sessionApi = {
   getAll: (): Promise<GolfSession[]> =>
     apiRequest<GolfSession[]>('/api/sessions'),
 
+  // Get future sessions only (mobile optimized - today + future dates)
+  getAllFuture: (): Promise<GolfSession[]> =>
+    apiRequest<GolfSession[]>('/api/sessions?future=true'),
+
   // Get single session
   getById: (id: string): Promise<GolfSession> =>
     apiRequest<GolfSession>(`/api/sessions/${id}`),
@@ -321,20 +325,24 @@ export const golfUtils = {
   },
 
   // Find upcoming session index
+  // Since API filters to today + future, find first truly future session or first session
   findUpcomingSessionIndex: (sessions: GolfSession[]): number => {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    if (sessions.length === 0) return 0
     
+    const now = new Date()
+    
+    // Look for first session that hasn't passed yet (date + time)
     for (let i = 0; i < sessions.length; i++) {
-      const sessionDate = new Date(sessions[i].date)
-      const sessionDay = new Date(sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate())
+      const sessionDateTime = new Date(sessions[i].date)
       
-      if (sessionDay >= today) {
+      if (sessionDateTime > now) {
         return i
       }
     }
     
-    return sessions.length > 0 ? sessions.length - 1 : 0
+    // If all sessions have passed (e.g., today's session already happened), 
+    // focus on the first one (which would be today's session)
+    return 0
   },
 
   // Check if session is upcoming
