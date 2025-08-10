@@ -27,8 +27,9 @@ export default function App() {
   const [showUserSelection, setShowUserSelection] = useState(false)
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   
-  // Session creation state
+  // Session creation/editing state
   const [showCreateSession, setShowCreateSession] = useState(false)
+  const [editingSession, setEditingSession] = useState<any>(null)
 
   // Use custom hooks for data management (same as web app)
   const { users, loading: usersLoading } = useUsers()
@@ -139,8 +140,15 @@ export default function App() {
     setShowCreateSession(true)
   }
 
+  // Handle edit session
+  const handleEditSession = (session: any) => {
+    setEditingSession(session)
+    setShowCreateSession(true) // Reuse the same modal
+  }
+
   const handleSessionCreated = () => {
     setShowCreateSession(false)
+    setEditingSession(null) // Clear editing state
     fetchSessions() // Refresh the sessions list
   }
 
@@ -172,14 +180,18 @@ export default function App() {
     )
   }
 
-  // Show create session screen
+  // Show create/edit session screen
   if (showCreateSession) {
     return (
       <CreateSessionScreen
         users={users}
         currentUserId={currentUserId}
-        onCancel={() => setShowCreateSession(false)}
+        onCancel={() => {
+          setShowCreateSession(false)
+          setEditingSession(null)
+        }}
         onSessionCreated={handleSessionCreated}
+        editingSession={editingSession}
       />
     )
   }
@@ -236,6 +248,7 @@ export default function App() {
         currentUserId={currentUserId}
         onRefresh={onRefresh}
         refreshing={refreshing}
+        onEditSession={handleEditSession}
       />
     </SafeAreaView>
   )

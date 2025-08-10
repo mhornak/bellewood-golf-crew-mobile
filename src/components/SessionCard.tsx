@@ -12,6 +12,7 @@ interface SessionCardProps {
   deleteResponse: (sessionId: string, userId: string) => Promise<{ success: boolean; deletedResponse?: any; error?: string }>
   currentUserId: string
   isUpcoming?: boolean
+  onEditSession?: (session: GolfSession) => void
 }
 
 export default function SessionCard({
@@ -22,6 +23,7 @@ export default function SessionCard({
   deleteResponse,
   currentUserId,
   isUpcoming = false,
+  onEditSession,
 }: SessionCardProps) {
   
   // Use custom hook for session response management (React Native compatible)
@@ -140,8 +142,18 @@ export default function SessionCard({
     ]}>
       {/* Header */}
       <View style={styles.header}>
-        {/* Session Title */}
-        <Text style={styles.title}>{session.title}</Text>
+        {/* Session Title with Edit Button */}
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>{session.title}</Text>
+          {onEditSession && !isPastSession && (
+            <TouchableOpacity 
+              style={styles.editButton}
+              onPress={() => onEditSession(session)}
+            >
+              <Text style={styles.editIcon}>✏️</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         
         {/* Date, Time, and Creator */}
         <View style={styles.dateTimeRow}>
@@ -236,15 +248,17 @@ export default function SessionCard({
                   <TouchableOpacity
                     style={[
                       styles.transportButton,
-                      (!currentUserResponse?.transport || currentUserResponse?.transport === 'WALKING') && styles.activeTransportButton
+                      (!currentUserResponse?.transport || currentUserResponse?.transport === 'WALKING') && currentUserResponse?.status === 'IN' && styles.activeTransportButton,
+                      currentUserResponse?.status !== 'IN' && styles.disabledButton
                     ]}
                     onPress={() => handleTransportChange(currentUserId, 'WALKING')}
-                    disabled={isSubmitting(currentUserId)}
+                    disabled={isSubmitting(currentUserId) || currentUserResponse?.status !== 'IN'}
                   >
                     <Text style={styles.transportEmoji}>🚶</Text>
                     <Text style={[
                       styles.transportText,
-                      (!currentUserResponse?.transport || currentUserResponse?.transport === 'WALKING') && styles.activeTransportText
+                      (!currentUserResponse?.transport || currentUserResponse?.transport === 'WALKING') && currentUserResponse?.status === 'IN' && styles.activeTransportText,
+                      currentUserResponse?.status !== 'IN' && styles.disabledText
                     ]}>
                       Walking
                     </Text>
@@ -253,15 +267,17 @@ export default function SessionCard({
                   <TouchableOpacity
                     style={[
                       styles.transportButton,
-                      currentUserResponse?.transport === 'RIDING' && styles.activeTransportButton
+                      currentUserResponse?.transport === 'RIDING' && currentUserResponse?.status === 'IN' && styles.activeTransportButton,
+                      currentUserResponse?.status !== 'IN' && styles.disabledButton
                     ]}
                     onPress={() => handleTransportChange(currentUserId, 'RIDING')}
-                    disabled={isSubmitting(currentUserId)}
+                    disabled={isSubmitting(currentUserId) || currentUserResponse?.status !== 'IN'}
                   >
                     <Text style={styles.transportEmoji}>🛺</Text>
                     <Text style={[
                       styles.transportText,
-                      currentUserResponse?.transport === 'RIDING' && styles.activeTransportText
+                      currentUserResponse?.transport === 'RIDING' && currentUserResponse?.status === 'IN' && styles.activeTransportText,
+                      currentUserResponse?.status !== 'IN' && styles.disabledText
                     ]}>
                       Riding
                     </Text>
@@ -389,11 +405,24 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 16,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#1f2937',
-    marginBottom: 8,
+    flex: 1,
+  },
+  editButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  editIcon: {
+    fontSize: 18,
   },
   dateTimeRow: {
     flexDirection: 'row',

@@ -22,6 +22,7 @@ interface CreateSessionScreenProps {
   currentUserId: string
   onCancel: () => void
   onSessionCreated: () => void
+  editingSession?: any
 }
 
 export default function CreateSessionScreen({
@@ -29,15 +30,32 @@ export default function CreateSessionScreen({
   currentUserId,
   onCancel,
   onSessionCreated,
+  editingSession,
 }: CreateSessionScreenProps) {
-  const [formData, setFormData] = useState<SessionFormData>({
-    title: '',
-    date: '',
-    time: '',
-    description: '',
-    createdById: currentUserId,
-    tagIds: [],
-  })
+  // Initialize form data from editing session or defaults
+  const getInitialFormData = (): SessionFormData => {
+    if (editingSession) {
+      const sessionDate = new Date(editingSession.date)
+      return {
+        title: editingSession.title || '',
+        date: sessionDate.toISOString().split('T')[0], // YYYY-MM-DD format
+        time: sessionDate.toTimeString().slice(0, 5), // HH:MM format
+        description: editingSession.description || '',
+        createdById: editingSession.createdBy?.id || currentUserId,
+        tagIds: editingSession.sessionTags?.map((st: any) => st.tagId) || [],
+      }
+    }
+    return {
+      title: '',
+      date: '',
+      time: '',
+      description: '',
+      createdById: currentUserId,
+      tagIds: [],
+    }
+  }
+
+  const [formData, setFormData] = useState<SessionFormData>(getInitialFormData())
   const [isCreating, setIsCreating] = useState(false)
 
   const validateForm = () => {
@@ -64,7 +82,7 @@ export default function CreateSessionScreen({
     return true
   }
 
-  const handleCreateSession = async () => {
+  const handleSubmitSession = async () => {
     if (!validateForm()) return
 
     setIsCreating(true)
@@ -85,11 +103,15 @@ export default function CreateSessionScreen({
       console.log("DEBUG: Local time input:", formData.date, formData.time);
       console.log("DEBUG: Created Date object:", localDateTime);
       console.log("DEBUG: ISO string for API:", dateTimeString);
-      console.log('DEBUG: Local time input:', formData.date, formData.time);
-      console.log('DEBUG: Created Date object:', localDateTime);
-      console.log('DEBUG: ISO string for API:', dateTimeString);      
-      const response = await fetch('https://main.d2m423juctwnaf.amplifyapp.com/api/sessions', {
-        method: 'POST',
+      
+      // Determine if we're editing or creating
+      const isEditing = !!editingSession
+      const apiUrl = isEditing 
+        ? `https://main.d2m423juctwnaf.amplifyapp.com/api/sessions/${editingSession.id}`
+        : 'https://main.d2m423juctwnaf.amplifyapp.com/api/sessions'
+      
+      const response = await fetch(apiUrl, {
+        method: isEditing ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -107,14 +129,16 @@ export default function CreateSessionScreen({
         throw new Error(errorData.error || `HTTP ${response.status}`)
       }
 
-      Alert.alert('Success!', 'Golf session created successfully', [
+      const successMessage = isEditing ? 'Golf session updated successfully' : 'Golf session created successfully'
+      Alert.alert('Success!', successMessage, [
         { text: 'OK', onPress: () => {
           onSessionCreated()
         }}
       ])
     } catch (error) {
-      console.error('Error creating session:', error)
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to create session')
+      console.error(`Error ${isEditing ? 'updating' : 'creating'} session:`, error)
+      const errorMessage = isEditing ? 'Failed to update session' : 'Failed to create session'
+      Alert.alert('Error', error instanceof Error ? error.message : errorMessage)
     } finally {
       setIsCreating(false)
     }
@@ -131,14 +155,14 @@ export default function CreateSessionScreen({
           <TouchableOpacity onPress={onCancel} style={styles.cancelButton}>
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create Golf Session</Text>
+          <Text style={styles.headerTitle}>{editingSession ? 'Edit Golf Session' : 'Create Golf Session'}</Text>
           <TouchableOpacity 
-            onPress={handleCreateSession}
+            onPress={handleSubmitSession}
             style={[styles.saveButton, isCreating && styles.saveButtonDisabled]}
             disabled={isCreating}
           >
             <Text style={styles.saveText}>
-              {isCreating ? 'Creating...' : 'Create'}
+              {isCreating ? (editingSession ? 'Saving...' : 'Creating...') : (editingSession ? 'Save' : 'Create')}
             </Text>
           </TouchableOpacity>
         </View>
