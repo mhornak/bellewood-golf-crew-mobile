@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { View, Text, StyleSheet, Dimensions, FlatList, ViewToken, RefreshControl, ScrollView } from 'react-native'
 import SessionCard from './SessionCard'
 import { golfUtils, type GolfSession } from '../lib/api'
@@ -43,11 +43,15 @@ export default function SessionCarousel({
   const [currentIndex, setCurrentIndex] = useState(0)
   const [hasInitialized, setHasInitialized] = useState(false)
   const [isTargetFocusing, setIsTargetFocusing] = useState(false)
+  const [lastTargetSessionId, setLastTargetSessionId] = useState<string | null>(null)
   const flatListRef = useRef<FlatList>(null)
 
   // API now filters to only today + future sessions, just sort them
   // Sort sessions by date (upcoming first) - using platform-agnostic utility
-  const sortedSessions = golfUtils.sortSessionsByDate(sessions)
+  // Use useMemo to prevent unnecessary re-sorting and useEffect triggers
+  const sortedSessions = useMemo(() => {
+    return golfUtils.sortSessionsByDate(sessions)
+  }, [sessions])
 
   // Focus on target session (after create/edit) or find upcoming session
   useEffect(() => {
@@ -69,16 +73,19 @@ export default function SessionCarousel({
           targetIndex = sessionIndex
           isTargetSession = true
           setIsTargetFocusing(true) // Block viewable items handler during target focus
+          setLastTargetSessionId(targetSessionId) // Remember this target
           console.log('✅ Target session found, focusing on index:', targetIndex)
         }
       } 
-      // Priority 2: Auto-focus on upcoming session (only on first load)
-      else if (!hasInitialized) {
+      // Priority 2: Auto-focus on upcoming session (only on very first load, not after target clears)
+      else if (!hasInitialized && !lastTargetSessionId) {
         targetIndex = golfUtils.findUpcomingSessionIndex(sortedSessions)
         setHasInitialized(true)
+        console.log('🎯 First load: auto-focusing on upcoming session at index:', targetIndex)
       } 
-      // Priority 3: Don't change focus if already initialized
+      // Priority 3: Don't change focus if already initialized and no target
       else {
+        console.log('🚫 Already initialized or had target - skipping focus change')
         return
       }
 
