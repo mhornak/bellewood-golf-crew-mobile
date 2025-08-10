@@ -42,6 +42,7 @@ export default function SessionCarousel({
 }: SessionCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [hasInitialized, setHasInitialized] = useState(false)
+  const [isTargetFocusing, setIsTargetFocusing] = useState(false)
   const flatListRef = useRef<FlatList>(null)
 
   // API now filters to only today + future sessions, just sort them
@@ -67,6 +68,7 @@ export default function SessionCarousel({
         if (sessionIndex !== -1) {
           targetIndex = sessionIndex
           isTargetSession = true
+          setIsTargetFocusing(true) // Block viewable items handler during target focus
           console.log('✅ Target session found, focusing on index:', targetIndex)
         }
       } 
@@ -80,6 +82,7 @@ export default function SessionCarousel({
         return
       }
 
+      console.log('🎯 Setting currentIndex to:', targetIndex)
       setCurrentIndex(targetIndex)
       
       // Scroll to target session after a brief delay to ensure the list is rendered
@@ -93,8 +96,10 @@ export default function SessionCarousel({
           // Clear the target AFTER the scroll is complete (only for target sessions)
           if (isTargetSession) {
             setTimeout(() => {
+              setIsTargetFocusing(false) // Re-enable viewable items handler
               onTargetSessionFocused?.()
-            }, isTargetSession ? 500 : 0) // Wait for animation to complete
+              console.log('🎯 Target focus complete, re-enabling scroll handler')
+            }, 800) // Wait for animation to complete + buffer
           }
         }
       }, 100)
@@ -103,8 +108,15 @@ export default function SessionCarousel({
 
   // Handle scroll events to update current index
   const handleViewableItemsChanged = ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    // Don't update index if we're currently focusing on a target session
+    if (isTargetFocusing) {
+      console.log('🚫 Ignoring viewable items change during target focus')
+      return
+    }
+    
     if (viewableItems.length > 0) {
       const newIndex = viewableItems[0].index || 0
+      console.log('👁️ Viewable items changed, setting index to:', newIndex)
       setCurrentIndex(newIndex)
     }
   }
