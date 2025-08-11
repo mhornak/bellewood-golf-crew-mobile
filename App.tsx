@@ -147,20 +147,22 @@ export default function App() {
     setShowCreateSession(true) // Reuse the same modal
   }
 
-  // Handle delete session
+  // Handle archive session
   const handleDeleteSession = async (session: any) => {
     Alert.alert(
-      'Delete Session',
-      `Are you sure you want to delete "${session.title}"?\n\nThis will remove the session and all player responses. This action cannot be undone.`,
+      'Archive Session',
+      `Are you sure you want to archive "${session.title}"?\n\nThis will hide the session from the main view but preserve all player responses. You can restore it later if needed.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Delete', 
+          text: 'Archive', 
           style: 'destructive',
           onPress: async () => {
             try {
               const response = await fetch(`https://main.d2m423juctwnaf.amplifyapp.com/api/sessions/${session.id}`, {
                 method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUserId }),
               })
 
               if (!response.ok) {
@@ -168,11 +170,11 @@ export default function App() {
                 throw new Error(errorData.error || `HTTP ${response.status}`)
               }
 
-              Alert.alert('Success!', 'Session deleted successfully')
+              Alert.alert('Success!', 'Session archived successfully')
               fetchSessions() // Refresh the sessions list
             } catch (error) {
-              console.error('Error deleting session:', error)
-              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete session')
+              console.error('Error archiving session:', error)
+              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to archive session')
             }
           }
         }
