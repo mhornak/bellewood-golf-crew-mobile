@@ -81,11 +81,12 @@ export default function App() {
         const sessionId = sessionMatch[1]
         console.log('📍 Navigating to session:', sessionId)
         
-        // Find the session and ensure it's visible
+        // Find the session and scroll to it silently
         const targetSession = sessions.find(s => s.id === sessionId)
         if (targetSession) {
-          // Session found - the carousel will automatically show it
-          Alert.alert('🎯 Session Found!', `Opened ${targetSession.title}`)
+          // Session found - trigger carousel to scroll to it (no alert)
+          setTargetSessionId(sessionId)
+          console.log('🎯 Deep link: Session found, setting target for carousel focus:', sessionId)
         } else {
           Alert.alert('❌ Session Not Found', 'The session may no longer exist or you may not have access to it.')
         }
