@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { 
   View, 
   Text, 
@@ -31,6 +31,9 @@ export default function App() {
   const [showCreateSession, setShowCreateSession] = useState(false)
   const [editingSession, setEditingSession] = useState<any>(null)
   const [targetSessionId, setTargetSessionId] = useState<string | null>(null)
+  
+  // Track if we've processed the initial deep link to prevent duplicates
+  const hasProcessedInitialUrl = useRef(false)
 
   // Use custom hooks for data management (same as web app)
   const { users, loading: usersLoading } = useUsers()
@@ -81,15 +84,9 @@ export default function App() {
         const sessionId = sessionMatch[1]
         console.log('📍 Navigating to session:', sessionId)
         
-        // Find the session and scroll to it silently
-        const targetSession = sessions.find(s => s.id === sessionId)
-        if (targetSession) {
-          // Session found - trigger carousel to scroll to it (no alert)
-          setTargetSessionId(sessionId)
-          console.log('🎯 Deep link: Session found, setting target for carousel focus:', sessionId)
-        } else {
-          Alert.alert('❌ Session Not Found', 'The session may no longer exist or you may not have access to it.')
-        }
+        // Just set the target - let the carousel handle validation when sessions are ready
+        setTargetSessionId(sessionId)
+        console.log('🎯 Deep link: Setting target session for focus:', sessionId)
       }
     }
 
@@ -98,15 +95,18 @@ export default function App() {
       handleDeepLink(event.url)
     })
 
-    // Handle deep link if app was opened from a link
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        handleDeepLink(url)
-      }
-    })
+    // Handle deep link if app was opened from a link (only once!)
+    if (!hasProcessedInitialUrl.current) {
+      Linking.getInitialURL().then((url) => {
+        if (url) {
+          hasProcessedInitialUrl.current = true
+          handleDeepLink(url)
+        }
+      })
+    }
 
     return () => subscription?.remove()
-  }, [sessions])
+  }, []) // ✅ No dependencies - only run once
 
   // Wait for users to load before showing selection
   useEffect(() => {
