@@ -38,6 +38,12 @@ export const useSessionResponse = (
     status: ResponseStatus
   ) => {
     try {
+      // Check if session is archived before allowing any response changes
+      if (session.isArchived) {
+        setError('This session has been archived and is no longer accepting responses')
+        return { success: false, error: 'This session has been archived and is no longer accepting responses' }
+      }
+
       setSubmittingResponse(userId)
       setError(null)
       
@@ -128,6 +134,12 @@ export const useSessionResponse = (
   // Handle note change - optimistic update with background save
   const handleNoteChange = useCallback(async (userId: string, note: string) => {
     try {
+      // Check if session is archived before allowing note changes
+      if (session.isArchived) {
+        setError('This session has been archived and is no longer accepting changes')
+        return { success: false, error: 'This session has been archived and is no longer accepting changes' }
+      }
+
       setError(null)
       
       const currentResponse = getUserResponse(userId)

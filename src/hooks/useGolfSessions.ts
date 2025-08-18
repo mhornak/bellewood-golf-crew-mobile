@@ -9,9 +9,12 @@ export const useGolfSessions = () => {
   const [error, setError] = useState<string | null>(null)
 
   // Fetch future sessions only (mobile optimized)
-  const fetchSessions = async () => {
+  const fetchSessions = async (isRefresh = false) => {
     try {
-      setLoading(true)
+      // Only set loading to true if it's not a refresh (to avoid interfering with RefreshControl)
+      if (!isRefresh) {
+        setLoading(true)
+      }
       setError(null)
       const data = await sessionApi.getAllFuture()
       setSessions(Array.isArray(data) ? data : [])
@@ -19,7 +22,10 @@ export const useGolfSessions = () => {
       setError(err instanceof Error ? err.message : 'Failed to fetch sessions')
       console.error('Error fetching sessions:', err)
     } finally {
-      setLoading(false)
+      // Only set loading to false if it wasn't a refresh
+      if (!isRefresh) {
+        setLoading(false)
+      }
     }
   }
 

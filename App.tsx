@@ -185,7 +185,7 @@ export default function App() {
   const onRefresh = async () => {
     setRefreshing(true)
     try {
-      await fetchSessions()
+      await fetchSessions(true) // Pass true to indicate this is a refresh
     } catch (error) {
       Alert.alert('Error', 'Failed to refresh sessions')
     } finally {
