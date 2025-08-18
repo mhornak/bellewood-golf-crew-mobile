@@ -11,6 +11,7 @@ export interface User {
   isAdmin: boolean
   createdAt: string
   updatedAt: string
+  userTags?: Array<{ tagId: string }>
 }
 
 export interface GolfSession {
@@ -50,10 +51,29 @@ export type TransportType = 'WALKING' | 'RIDING'
 
 // User API functions - GraphQL powered
 export const userApi = {
-  // Get all users
+  // Get all users with their tags for filtering
   getAll: async (): Promise<User[]> => {
-    const data = await graphqlClient.request(queries.GET_USERS) as { listUsers: User[] }
-    return data.listUsers
+    const data = await graphqlClient.request(queries.GET_USERS) as { listUsers: any[] }
+    
+    // For each user, get their tags to enable session filtering
+    const usersWithTags = await Promise.all(
+      data.listUsers.map(async (user: any) => {
+        try {
+          const userTagsData = await graphqlClient.request(queries.GET_USER_TAGS, {
+            userId: user.id
+          }) as { getUserTags: any[] }
+          return {
+            ...user,
+            userTags: userTagsData.getUserTags?.map((ut: any) => ({ tagId: ut.tagId })) || []
+          }
+        } catch {
+          // If getUserTags fails, return user without tags
+          return { ...user, userTags: [] }
+        }
+      })
+    )
+
+    return usersWithTags
   },
 
   // Get single user
