@@ -164,7 +164,9 @@ export default function SessionFormFields({
   // Format date for display
   const formatDateForDisplay = (dateString: string): string => {
     if (!dateString) return 'Select Date'
-    const date = new Date(dateString + 'T00:00:00.000Z')
+    // Parse the date as local time, not UTC
+    const [year, month, day] = dateString.split('-')
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
     if (isNaN(date.getTime())) return 'Select Date'
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
