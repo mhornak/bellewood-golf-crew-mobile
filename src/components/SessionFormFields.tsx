@@ -9,9 +9,6 @@ interface Tag {
   name: string
   description?: string | null
   color?: string | null
-  _count: {
-    userTags: number
-  }
 }
 
 interface User {
@@ -349,12 +346,7 @@ export default function SessionFormFields({
                       {tag.name}
                     </Text>
                   </View>
-                  <Text style={[
-                    styles.tagCount,
-                    formData.tagIds.includes(tag.id) && styles.tagCountSelected
-                  ]}>
-                    {tag._count.userTags} users
-                  </Text>
+                  {/* User count removed for simplicity */}
                 </View>
                 <View style={[
                   styles.checkbox,

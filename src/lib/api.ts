@@ -351,43 +351,10 @@ export const sessionApi = {
 
 // Tags API
 export const tagsApi = {
-  // Get all tags with user counts
+  // Get all tags (simplified - no user counts)
   getAll: async () => {
-    const [tagsData, usersData] = await Promise.all([
-      graphqlClient.request(queries.GET_TAGS) as Promise<{ listTags: any[] }>,
-      graphqlClient.request(queries.GET_USERS) as Promise<{ listUsers: any[] }>
-    ])
-    
-    // Get all user tags to count how many users are assigned to each tag
-    const userTagsPromises = usersData.listUsers.map(async (user: any) => {
-      try {
-        const userTagsData = await graphqlClient.request(queries.GET_USER_TAGS, {
-          userId: user.id
-        }) as { getUserTags: any[] }
-        return userTagsData.getUserTags || []
-      } catch (error) {
-        console.error(`Error getting tags for user ${user.id}:`, error)
-        return []
-      }
-    })
-    
-    const allUserTags = (await Promise.all(userTagsPromises)).flat()
-    
-    // Count users per tag
-    const tagUserCounts: Record<string, number> = {}
-    allUserTags.forEach((userTag: any) => {
-      tagUserCounts[userTag.tagId] = (tagUserCounts[userTag.tagId] || 0) + 1
-    })
-    
-    // Add counts to tags
-    const tagsWithCounts = tagsData.listTags.map((tag: any) => ({
-      ...tag,
-      _count: {
-        userTags: tagUserCounts[tag.id] || 0
-      }
-    }))
-    
-    return tagsWithCounts
+    const tagsData = await graphqlClient.request(queries.GET_TAGS) as { listTags: any[] }
+    return tagsData.listTags
   }
 }
 
