@@ -68,7 +68,7 @@ export const useSessionResponse = (
           if (currentResponse) {
             setOptimisticResponses(prev => ({
               ...prev,
-              [userId]: { status: currentResponse.status, note: currentResponse.note || '' }
+              [userId]: { status: currentResponse.status, note: currentResponse.note || '', transport: currentResponse.transport || 'WALKING' }
             }))
           }
         }
@@ -78,7 +78,7 @@ export const useSessionResponse = (
         // Set/update response (normal behavior)
         setOptimisticResponses(prev => ({
           ...prev,
-          [userId]: { status, note, transport }
+          [userId]: { status, note, transport: transport || 'WALKING' }
         }))
         
         // Background API call using the passed submitResponse function

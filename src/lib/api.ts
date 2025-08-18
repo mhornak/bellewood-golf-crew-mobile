@@ -1,6 +1,7 @@
 // Platform-agnostic API utilities for golf scheduler
-// These functions work identically in React Native
-// Includes intelligent retry logic for Aurora Serverless cold starts
+// GraphQL-powered mobile API using AppSync
+
+import { graphqlClient, queries, mutations } from './appsync'
 
 export interface User {
   id: string
@@ -47,216 +48,245 @@ export interface GolfSession {
 export type ResponseStatus = 'IN' | 'OUT' | 'UNDECIDED'
 export type TransportType = 'WALKING' | 'RIDING'
 
-// API Base URL - can be environment specific
-const getApiBaseUrl = () => {
-  // Mobile app connects to deployed AWS Amplify backend
-  return 'https://main.d2m423juctwnaf.amplifyapp.com'
-}
-
-// Retry configuration for Aurora Serverless cold starts
-const RETRY_CONFIG = {
-  maxRetries: 4,
-  baseDelayMs: 1500,
-  maxDelayMs: 15000,
-  backoffMultiplier: 2,
-  // Errors that indicate Aurora is starting up or network issues
-  retryableErrors: [
-    'Network request failed',
-    'fetch failed', 
-    'timeout',
-    'ECONNRESET',
-    'ETIMEDOUT',
-    'Failed to fetch',
-    'NetworkError',
-    'TypeError: fetch failed',
-    'TypeError: Network request failed',
-    'Load failed',
-    'Connection failed',
-    'Request timeout',
-    'Service Unavailable'
-  ]
-}
-
-// Sleep utility for delays
-const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
-
-// Check if error is likely due to Aurora cold start
-const isRetryableError = (error: any, response?: Response): boolean => {
-  const errorMessage = error?.message?.toLowerCase() || ''
-  
-  // Check for network/fetch errors
-  const hasRetryableMessage = RETRY_CONFIG.retryableErrors.some(retryableError => 
-    errorMessage.includes(retryableError.toLowerCase())
-  )
-  
-  // Check for HTTP status codes that indicate server issues (not client errors)
-  const hasRetryableStatus = response && (
-    response.status === 502 || // Bad Gateway
-    response.status === 503 || // Service Unavailable  
-    response.status === 504 || // Gateway Timeout
-    response.status === 0      // Network error
-  )
-  
-  return hasRetryableMessage || hasRetryableStatus || false
-}
-
-// Calculate delay with exponential backoff
-const calculateDelay = (attempt: number): number => {
-  const delay = RETRY_CONFIG.baseDelayMs * Math.pow(RETRY_CONFIG.backoffMultiplier, attempt)
-  return Math.min(delay, RETRY_CONFIG.maxDelayMs)
-}
-
-// Generic API request handler with intelligent retry
-const apiRequest = async <T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> => {
-  const url = `${getApiBaseUrl()}${endpoint}`
-  
-  const defaultOptions: RequestInit = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  }
-
-  let lastError: any
-  let lastResponse: Response | undefined
-  
-  for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
-    try {
-      if (attempt > 0) {
-        const delay = calculateDelay(attempt - 1)
-        console.log(`⏳ Retrying in ${delay}ms (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1})...`)
-        await sleep(delay)
-      }
-      
-      console.log(`🌐 Making API request to: ${url} (attempt ${attempt + 1})`)
-      console.log('📋 Request options:', defaultOptions)
-      
-      const response = await fetch(url, defaultOptions)
-      lastResponse = response
-      console.log('📡 Response status:', response.status)
-      console.log('📡 Response headers:', response.headers)
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.error('❌ API Error:', errorData)
-        const error = new Error(errorData.error || `HTTP ${response.status}`)
-        
-        // Check if this HTTP error is retryable (server issues)
-        if (!isRetryableError(error, response) || attempt === RETRY_CONFIG.maxRetries) {
-          throw error
-        }
-        
-        console.log('🔄 Server error appears retryable, will retry...')
-        lastError = error
-        continue
-      }
-
-      const data = await response.json()
-      if (attempt > 0) {
-        console.log(`✅ API Success after ${attempt + 1} attempts:`, endpoint)
-      } else {
-        console.log('✅ API Success:', endpoint)
-      }
-      return data
-      
-    } catch (error) {
-      lastError = error
-      console.error(`🚨 Network Error (attempt ${attempt + 1}):`, error)
-      
-      // Don't retry if this isn't a retryable error or we're at max retries
-      if (!isRetryableError(error, lastResponse) || attempt === RETRY_CONFIG.maxRetries) {
-        break
-      }
-      
-      console.log('🔄 Error appears to be Aurora cold start, will retry...')
-    }
-  }
-  
-  console.error('💥 All retry attempts failed')
-  throw lastError
-}
-
-// User API functions
+// User API functions - GraphQL powered
 export const userApi = {
   // Get all users
-  getAll: (): Promise<User[]> => 
-    apiRequest<User[]>('/api/users'),
+  getAll: async (): Promise<User[]> => {
+    const data = await graphqlClient.request(queries.GET_USERS) as { listUsers: User[] }
+    return data.listUsers
+  },
 
   // Get single user
-  getById: (id: string): Promise<User> => 
-    apiRequest<User>(`/api/users/${id}`),
+  getById: async (id: string): Promise<User> => {
+    // For individual user lookup, we'll use the list and filter
+    // This maintains compatibility while using available GraphQL operations
+    const data = await graphqlClient.request(queries.GET_USERS) as { listUsers: User[] }
+    const user = data.listUsers.find(u => u.id === id)
+    if (!user) {
+      throw new Error(`User with ID ${id} not found`)
+    }
+    return user
+  },
 
   // Create user
-  create: (userData: { name: string; nickname: string; phone?: string }): Promise<User> =>
-    apiRequest<User>('/api/users', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    }),
+  create: async (userData: { name: string; nickname: string; phone?: string }): Promise<User> => {
+    const data = await graphqlClient.request(mutations.CREATE_USER, {
+      input: {
+        name: userData.name,
+        nickname: userData.nickname,
+        phone: userData.phone || null,
+        isAdmin: false,
+      }
+    }) as { createUser: User }
+    return data.createUser
+  },
 
   // Update user
-  update: (id: string, userData: { name: string; nickname: string; phone?: string }): Promise<User> =>
-    apiRequest<User>(`/api/users/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(userData),
-    }),
+  update: async (id: string, userData: { name: string; nickname: string; phone?: string }): Promise<User> => {
+    const data = await graphqlClient.request(mutations.UPDATE_USER, {
+      input: {
+        id,
+        name: userData.name,
+        nickname: userData.nickname,
+        phone: userData.phone || null,
+      }
+    }) as { updateUser: User }
+    return data.updateUser
+  },
 
   // Delete user
-  delete: (id: string): Promise<{ message: string }> =>
-    apiRequest<{ message: string }>(`/api/users/${id}`, {
-      method: 'DELETE',
-    }),
+  delete: async (id: string): Promise<{ message: string }> => {
+    await graphqlClient.request(mutations.DELETE_USER, { id })
+    return { message: 'User deleted successfully' }
+  },
 }
 
-// Session API functions
+// Session API functions - GraphQL powered
 export const sessionApi = {
-  // Get all sessions
-  getAll: (): Promise<GolfSession[]> =>
-    apiRequest<GolfSession[]>('/api/sessions'),
+  // Get all sessions (mobile only needs future sessions)
+  getAll: async (): Promise<GolfSession[]> => {
+    return sessionApi.getAllFuture()
+  },
 
-  // Get future sessions only (mobile optimized - today + future dates)
-  getAllFuture: (): Promise<GolfSession[]> =>
-    apiRequest<GolfSession[]>('/api/sessions?future=true'),
+  // Get future sessions only (mobile optimized)
+  getAllFuture: async (): Promise<GolfSession[]> => {
+    // Get sessions
+    const sessionData = await graphqlClient.request(queries.GET_SESSIONS, {
+      includeArchived: false
+    }) as { listGolfSessions: any[] }
+    
+    let sessions = sessionData.listGolfSessions || []
+    
+    // Filter for future sessions (today and forward)
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const todayUTC = new Date(today.getTime() - (today.getTimezoneOffset() * 60000))
+    
+    sessions = sessions.filter((session: any) => {
+      const sessionDate = new Date(session.date)
+      return sessionDate >= todayUTC
+    })
+
+    // For each session, fetch related data
+    const sessionsWithRelatedData = await Promise.all(
+      sessions.map(async (session: any) => {
+        try {
+          // Get creator info
+          const allUsers = await userApi.getAll()
+          const creator = allUsers.find(u => u.id === session.createdById)
+          
+          // Get responses for this session
+          const responsesData = await graphqlClient.request(queries.GET_RESPONSES_FOR_SESSION, {
+            golfSessionId: session.id
+          }) as { getResponsesForSession: any[] }
+          
+          // Get users for each response
+          const responsesWithUsers = await Promise.all(
+            (responsesData.getResponsesForSession || []).map(async (response: any) => {
+              try {
+                const user = allUsers.find(u => u.id === response.userId)
+                return {
+                  ...response,
+                  user: user ? { id: user.id, nickname: user.nickname } : null
+                }
+              } catch {
+                return {
+                  ...response,
+                  user: null
+                }
+              }
+            })
+          )
+          
+          // Get session tags
+          const sessionTagsData = await graphqlClient.request(queries.GET_SESSION_TAGS, {
+            sessionId: session.id
+          }) as { getSessionTags: any[] }
+          
+          // Get tag details for each session tag
+          const allTags = await graphqlClient.request(queries.GET_TAGS) as { listTags: any[] }
+          const sessionTagsWithDetails = (sessionTagsData.getSessionTags || []).map((sessionTag: any) => {
+            const tag = allTags.listTags.find((t: any) => t.id === sessionTag.tagId)
+            return {
+              ...sessionTag,
+              tag: tag ? {
+                id: tag.id,
+                name: tag.name,
+                color: tag.color
+              } : null
+            }
+          }).filter((st: any) => st.tag) // Remove any with missing tags
+          
+          return {
+            ...session,
+            createdBy: creator ? { id: creator.id, nickname: creator.nickname } : { id: session.createdById, nickname: 'Unknown' },
+            responses: responsesWithUsers.filter(r => r.user), // Remove responses with missing users
+            sessionTags: sessionTagsWithDetails
+          }
+        } catch (error) {
+          console.error('Error fetching related data for session:', session.id, error)
+          return {
+            ...session,
+            createdBy: { id: session.createdById, nickname: 'Unknown' },
+            responses: [],
+            sessionTags: []
+          }
+        }
+      })
+    )
+    
+    // Sort sessions by date (upcoming first)
+    return sessionsWithRelatedData.sort((a: any, b: any) => {
+      const dateA = new Date(a.date).getTime()
+      const dateB = new Date(b.date).getTime()
+      return dateA - dateB
+    })
+  },
 
   // Get single session
-  getById: (id: string): Promise<GolfSession> =>
-    apiRequest<GolfSession>(`/api/sessions/${id}`),
+  getById: async (id: string): Promise<GolfSession> => {
+    const sessions = await sessionApi.getAllFuture()
+    const session = sessions.find(s => s.id === id)
+    if (!session) {
+      throw new Error(`Session with ID ${id} not found`)
+    }
+    return session
+  },
 
   // Create session
-  create: (sessionData: {
+  create: async (sessionData: {
     title: string
     date: string
     description?: string
     createdById: string
-  }): Promise<GolfSession> =>
-    apiRequest<GolfSession>('/api/sessions', {
-      method: 'POST',
-      body: JSON.stringify(sessionData),
-    }),
+    tagIds?: string[]
+  }): Promise<GolfSession> => {
+    const requestInput = {
+      title: sessionData.title,
+      date: new Date(sessionData.date).toISOString(),
+      description: sessionData.description || null,
+      createdById: sessionData.createdById,
+    }
+    
+    console.log('Creating session with input:', JSON.stringify(requestInput, null, 2))
+    
+    const data = await graphqlClient.request(mutations.CREATE_SESSION, {
+      input: requestInput
+    }) as { createGolfSession: any }
+
+    const newSession = data.createGolfSession
+
+    // Add tags if provided
+    if (sessionData.tagIds && sessionData.tagIds.length > 0) {
+      try {
+        await Promise.all(
+          sessionData.tagIds.map((tagId: string) =>
+            graphqlClient.request(mutations.ADD_TAG_TO_SESSION, {
+              input: {
+                sessionId: newSession.id,
+                tagId
+              }
+            })
+          )
+        )
+      } catch (tagError) {
+        console.error('Failed to add tags to session:', tagError)
+        // Continue without failing the entire request
+      }
+    }
+
+    // Return the session with complete data
+    return sessionApi.getById(newSession.id)
+  },
 
   // Update session
-  update: (id: string, sessionData: {
+  update: async (id: string, sessionData: {
     title: string
     date: string
     description?: string
     createdById: string
-  }): Promise<GolfSession> =>
-    apiRequest<GolfSession>(`/api/sessions/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(sessionData),
-    }),
+  }): Promise<GolfSession> => {
+    const data = await graphqlClient.request(mutations.UPDATE_SESSION, {
+      input: {
+        id,
+        title: sessionData.title,
+        date: new Date(sessionData.date).toISOString(),
+        description: sessionData.description || null,
+      }
+    }) as { updateGolfSession: any }
+
+    // Return the updated session with complete data
+    return sessionApi.getById(id)
+  },
 
   // Delete session
-  delete: (id: string): Promise<{ message: string; deletedResponses: number }> =>
-    apiRequest<{ message: string; deletedResponses: number }>(`/api/sessions/${id}`, {
-      method: 'DELETE',
-    }),
+  delete: async (id: string): Promise<{ message: string; deletedResponses: number }> => {
+    await graphqlClient.request(mutations.DELETE_SESSION, { id })
+    return { message: 'Session deleted successfully', deletedResponses: 0 }
+  },
 
   // Submit/update response to session
-  submitResponse: (sessionId: string, responseData: {
+  submitResponse: async (sessionId: string, responseData: {
     userId: string
     status: ResponseStatus
     note?: string
@@ -267,14 +297,29 @@ export const sessionApi = {
     note?: string
     transport?: TransportType
     user: { id: string; nickname: string }
-  }> =>
-    apiRequest(`/api/sessions/${sessionId}/responses`, {
-      method: 'POST',
-      body: JSON.stringify(responseData),
-    }),
+  }> => {
+    const data = await graphqlClient.request(mutations.SUBMIT_RESPONSE, {
+      input: {
+        userId: responseData.userId,
+        golfSessionId: sessionId,
+        status: responseData.status,
+        note: responseData.note || null,
+        transport: responseData.transport || null
+      }
+    }) as { submitResponse: any }
+
+    // Get user info to match expected format
+    const users = await userApi.getAll()
+    const user = users.find(u => u.id === responseData.userId)
+
+    return {
+      ...data.submitResponse,
+      user: user ? { id: user.id, nickname: user.nickname } : { id: responseData.userId, nickname: 'Unknown' }
+    }
+  },
 
   // Remove user response from session
-  deleteResponse: (sessionId: string, userId: string): Promise<{
+  deleteResponse: async (sessionId: string, userId: string): Promise<{
     message: string
     deletedResponse: {
       id: string
@@ -283,14 +328,70 @@ export const sessionApi = {
       transport?: TransportType
       user: { id: string; nickname: string }
     }
-  }> =>
-    apiRequest(`/api/sessions/${sessionId}/responses`, {
-      method: 'DELETE',
-      body: JSON.stringify({ userId }),
-    }),
+  }> => {
+    await graphqlClient.request(mutations.DELETE_RESPONSE, {
+      userId,
+      golfSessionId: sessionId
+    })
+
+    // Get user info for the response format
+    const users = await userApi.getAll()
+    const user = users.find(u => u.id === userId)
+
+    return {
+      message: 'Response removed successfully',
+      deletedResponse: {
+        id: `${userId}-${sessionId}`,
+        status: 'UNDECIDED' as ResponseStatus,
+        user: user ? { id: user.id, nickname: user.nickname } : { id: userId, nickname: 'Unknown' }
+      }
+    }
+  },
 }
 
-// Business logic utilities
+// Tags API
+export const tagsApi = {
+  // Get all tags with user counts
+  getAll: async () => {
+    const [tagsData, usersData] = await Promise.all([
+      graphqlClient.request(queries.GET_TAGS) as Promise<{ listTags: any[] }>,
+      graphqlClient.request(queries.GET_USERS) as Promise<{ listUsers: any[] }>
+    ])
+    
+    // Get all user tags to count how many users are assigned to each tag
+    const userTagsPromises = usersData.listUsers.map(async (user: any) => {
+      try {
+        const userTagsData = await graphqlClient.request(queries.GET_USER_TAGS, {
+          userId: user.id
+        }) as { getUserTags: any[] }
+        return userTagsData.getUserTags || []
+      } catch (error) {
+        console.error(`Error getting tags for user ${user.id}:`, error)
+        return []
+      }
+    })
+    
+    const allUserTags = (await Promise.all(userTagsPromises)).flat()
+    
+    // Count users per tag
+    const tagUserCounts: Record<string, number> = {}
+    allUserTags.forEach((userTag: any) => {
+      tagUserCounts[userTag.tagId] = (tagUserCounts[userTag.tagId] || 0) + 1
+    })
+    
+    // Add counts to tags
+    const tagsWithCounts = tagsData.listTags.map((tag: any) => ({
+      ...tag,
+      _count: {
+        userTags: tagUserCounts[tag.id] || 0
+      }
+    }))
+    
+    return tagsWithCounts
+  }
+}
+
+// Business logic utilities (unchanged)
 export const golfUtils = {
   // Calculate group organization
   getGroupingText: (inCount: number): string => {
@@ -325,7 +426,6 @@ export const golfUtils = {
   },
 
   // Find upcoming session index
-  // Since API filters to today + future, find first truly future session or first session
   findUpcomingSessionIndex: (sessions: GolfSession[]): number => {
     if (sessions.length === 0) return 0
     
@@ -340,8 +440,7 @@ export const golfUtils = {
       }
     }
     
-    // If all sessions have passed (e.g., today's session already happened), 
-    // focus on the first one (which would be today's session)
+    // If all sessions have passed, focus on the first one
     return 0
   },
 
@@ -351,8 +450,6 @@ export const golfUtils = {
   },
 
   // Filter users based on session tags
-  // If session has no tags, return all users (backwards compatibility)
-  // If session has tags, only return users who belong to at least one of those tags
   filterUsersBySessionTags: (
     allUsers: Array<{ id: string; name: string; nickname: string; userTags?: Array<{ tagId: string }> }>,
     session: { sessionTags?: Array<{ tag: { id: string } }> }

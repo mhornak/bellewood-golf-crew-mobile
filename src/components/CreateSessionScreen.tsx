@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert, KeyboardAvoidingView, Platform } from 'react-native'
 import SessionFormFields from './SessionFormFields'
+import { sessionApi } from '../lib/api'
 
 interface User {
   id: string
@@ -106,31 +107,28 @@ export default function CreateSessionScreen({
       console.log("DEBUG: Local time input:", formData.date, formData.time);
       console.log("DEBUG: Created Date object:", localDateTime);
       console.log("DEBUG: ISO string for API:", dateTimeString);
-      const apiUrl = isEditing 
-        ? `https://main.d2m423juctwnaf.amplifyapp.com/api/sessions/${editingSession.id}`
-        : 'https://main.d2m423juctwnaf.amplifyapp.com/api/sessions'
-      
-      const response = await fetch(apiUrl, {
-        method: isEditing ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+
+      let sessionData;
+      if (isEditing) {
+        // Update existing session
+        sessionData = await sessionApi.update(editingSession.id, {
+          title: formData.title.trim(),
+          date: dateTimeString,
+          description: formData.description.trim() || undefined,
+          createdById: formData.createdById,
+        })
+      } else {
+        // Create new session
+        sessionData = await sessionApi.create({
           title: formData.title.trim(),
           date: dateTimeString,
           description: formData.description.trim() || undefined,
           createdById: formData.createdById,
           tagIds: formData.tagIds,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.error || `HTTP ${response.status}`)
+        })
       }
 
-      const sessionData = await response.json()
-      const sessionId = sessionData.id || editingSession?.id // Get the session ID from response or existing session
+      const sessionId = sessionData.id
 
       const successMessage = isEditing ? 'Golf session updated successfully' : 'Golf session created successfully'
       Alert.alert('Success!', successMessage, [

@@ -17,7 +17,7 @@ import UserSelectionScreen from './src/components/UserSelectionScreen'
 import CreateSessionScreen from './src/components/CreateSessionScreen'
 import { useUsers } from './src/hooks/useUsers'
 import { useGolfSessions } from './src/hooks/useGolfSessions'
-import { golfUtils } from './src/lib/api'
+import { golfUtils, sessionApi } from './src/lib/api'
 
 const STORAGE_KEY = '@golf_scheduler_user_id'
 
@@ -160,17 +160,7 @@ export default function App() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await fetch(`https://main.d2m423juctwnaf.amplifyapp.com/api/sessions/${session.id}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: currentUserId }),
-              })
-
-              if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-                throw new Error(errorData.error || `HTTP ${response.status}`)
-              }
-
+              await sessionApi.delete(session.id)
               Alert.alert('Success!', 'Session archived successfully')
               fetchSessions() // Refresh the sessions list
             } catch (error) {
@@ -205,7 +195,8 @@ export default function App() {
 
   // Event handlers
   const handleResponseUpdate = () => {
-    fetchSessions()
+    // No need to fetch sessions - optimistic updates handle this
+    // fetchSessions() was causing unnecessary refreshes when saving notes
   }
 
   // Show user selection if needed

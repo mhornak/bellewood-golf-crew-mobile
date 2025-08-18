@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Platform } from 'react-native'
 import { Calendar } from 'react-native-calendars'
 import DateTimePicker from '@react-native-community/datetimepicker'
+import { tagsApi } from '../lib/api'
 
 interface Tag {
   id: string
@@ -54,10 +55,9 @@ export default function SessionFormFields({
   const fetchTags = async () => {
     setLoadingTags(true)
     try {
-      const response = await fetch('https://main.d2m423juctwnaf.amplifyapp.com/api/tags')
-      if (!response.ok) throw new Error('Failed to fetch tags')
-      const tags = await response.json()
-      setAvailableTags(Array.isArray(tags) ? tags : [])
+      const tags = await tagsApi.getAll()
+      // Tags now include real user counts from GraphQL
+      setAvailableTags(tags)
     } catch (error) {
       console.error('Error fetching tags:', error)
       Alert.alert('Error', 'Failed to load tags')

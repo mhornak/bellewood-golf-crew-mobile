@@ -701,4 +701,8 @@ const styles = StyleSheet.create({
   activeTransportText: {
     color: '#16a34a',
   },
+  disabledText: {
+    color: '#9ca3af',
+    opacity: 0.6,
+  },
 })
