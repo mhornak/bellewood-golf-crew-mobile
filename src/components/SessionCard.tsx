@@ -69,7 +69,20 @@ export default function SessionCard({
   const handleShareStatus = async () => {
     try {
       const sessionDate = format(new Date(session.date), 'PPP p')
-      let message = `🏌️ ${session.title}\n📅 ${sessionDate}\n\n`
+      
+      // Start with clean header (no emojis)
+      let message = `${session.title}\n${sessionDate}\n`
+      
+      // Add creator info
+      message += `Created by: ${session.createdBy.nickname}\n`
+      
+      // Add group tags if any
+      if (session.sessionTags && session.sessionTags.length > 0) {
+        const tagNames = session.sessionTags.map(st => st.tag.name).join(', ')
+        message += `🏷️ ${tagNames}\n`
+      }
+      
+      message += '\n'
 
       // Filter users based on session tags
       const filteredUsers = golfUtils.filterUsersBySessionTags(users, session)
@@ -81,8 +94,22 @@ export default function SessionCard({
         const userResponse = golfUtils.findUserResponse(session.responses, user.id)
         const status = userResponse?.status || 'UNDECIDED'
         const statusEmoji = status === 'IN' ? '✅' : status === 'OUT' ? '❌' : '❓'
-        const note = userResponse?.note ? ` - ${userResponse.note}` : ''
-        message += `${statusEmoji} ${user.nickname}${note}\n`
+        
+        // Build message parts
+        let userLine = `${statusEmoji} ${user.nickname}`
+        
+        // Add transport emoji for IN status
+        if (status === 'IN' && userResponse?.transport) {
+          const transportEmoji = userResponse.transport === 'WALKING' ? '🚶' : '🛺'
+          userLine += ` • ${transportEmoji}`
+        }
+        
+        // Add comment with bullet separator
+        if (userResponse?.note) {
+          userLine += ` • ${userResponse.note}`
+        }
+        
+        message += `${userLine}\n`
       })
 
       const inCount = filteredResponseStats.inCount
