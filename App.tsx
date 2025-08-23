@@ -21,11 +21,35 @@ import { golfUtils, sessionApi } from './src/lib/api'
 
 const STORAGE_KEY = '@golf_scheduler_user_id'
 
+// Fun loading messages for better UX
+const LOADING_MESSAGES = [
+  'Loading golf sessions...',
+  'Checking the tee times...',
+  'Warming up the golf cart...',
+  'Counting golf balls...',
+  'Polishing the clubs...',
+  'Reading the greens...',
+  'Checking wind conditions...',
+  'Preparing the scorecard...',
+  'Finding the perfect tee...',
+  'Stretching before the round...',
+  'Checking course conditions...',
+  'Loading the golf crew...',
+  'Organizing the golf bags...',
+  'Setting up the GPS...',
+  'Checking handicaps...',
+]
+
 export default function App() {
   // User authentication state
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [showUserSelection, setShowUserSelection] = useState(false)
   const [isLoadingUser, setIsLoadingUser] = useState(true)
+  
+  // Random loading message state
+  const [loadingMessage, setLoadingMessage] = useState(() => 
+    LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]
+  )
   
   // Session creation/editing state
   const [showCreateSession, setShowCreateSession] = useState(false)
@@ -50,6 +74,17 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false)
 
   // Sessions will be filtered and sorted by SessionCarousel
+
+  // Change loading message every 2 seconds for fun
+  useEffect(() => {
+    if (loading && !refreshing && sessions.length === 0) {
+      const interval = setInterval(() => {
+        setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)])
+      }, 2000)
+      
+      return () => clearInterval(interval)
+    }
+  }, [loading, refreshing, sessions.length])
 
   // Load stored user ID on app start
   useEffect(() => {
@@ -231,7 +266,7 @@ export default function App() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading golf sessions...</Text>
+          <Text style={styles.loadingText}>{loadingMessage}</Text>
         </View>
       </SafeAreaView>
     )
