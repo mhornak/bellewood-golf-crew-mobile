@@ -226,8 +226,8 @@ export default function App() {
     )
   }
 
-  // Show loading for sessions data
-  if (loading && !refreshing) {
+  // Show loading for sessions data (only if no sessions exist yet)
+  if (loading && !refreshing && sessions.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
