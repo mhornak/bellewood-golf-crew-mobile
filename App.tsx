@@ -23,21 +23,13 @@ const STORAGE_KEY = '@golf_scheduler_user_id'
 
 // Fun loading messages for better UX
 const LOADING_MESSAGES = [
-  'Loading golf sessions...',
-  'Checking the tee times...',
-  'Warming up the golf cart...',
-  'Counting golf balls...',
-  'Polishing the clubs...',
-  'Reading the greens...',
-  'Checking wind conditions...',
-  'Preparing the scorecard...',
-  'Finding the perfect tee...',
-  'Stretching before the round...',
-  'Checking course conditions...',
-  'Loading the golf crew...',
-  'Organizing the golf bags...',
-  'Setting up the GPS...',
-  'Checking handicaps...',
+  'Calculating handicaps, hmm, carry the 1...',
+  'double cutting and rolled the greens...',
+  '3-putting for bogey...',
+  'This aint no hobby...',
+  'Plunger and Skipper are always out there...',
+  'Clapping monkeys...',
+  'Fore please, now on the tee...'
 ]
 
 export default function App() {
