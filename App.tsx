@@ -236,8 +236,9 @@ export default function App() {
     // fetchSessions() was causing unnecessary refreshes when saving notes
   }
 
-  // Show user selection if needed
-  if (showUserSelection || !currentUserId) {
+  // Show user selection if needed (but don't unmount main app)
+  if ((showUserSelection || !currentUserId) && !currentUserId) {
+    // Only show user selection screen for initial user selection (no current user)
     return (
       <UserSelectionScreen
         users={users}
@@ -327,6 +328,17 @@ export default function App() {
           setTargetSessionId(null)
         }}
       />
+
+      {/* User Selection Overlay (for user switching) */}
+      {showUserSelection && currentUserId && (
+        <View style={styles.overlay}>
+          <UserSelectionScreen
+            users={users}
+            onUserSelect={handleUserSelect}
+            isLoading={usersLoading || isLoadingUser}
+          />
+        </View>
+      )}
     </SafeAreaView>
   )
 }
@@ -406,5 +418,14 @@ const styles = StyleSheet.create({
   },
   switchUserIcon: {
     fontSize: 16,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'white',
+    zIndex: 1000,
   },
 })
