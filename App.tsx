@@ -214,10 +214,13 @@ export default function App() {
 
   // Refresh handler
   const onRefresh = async () => {
+    console.log('🔄 onRefresh called!')
     setRefreshing(true)
     try {
       await fetchSessions(true) // Pass true to indicate this is a refresh
+      console.log('✅ Refresh completed successfully')
     } catch (error) {
+      console.log('❌ Refresh failed:', error)
       Alert.alert('Error', 'Failed to refresh sessions')
     } finally {
       setRefreshing(false)
@@ -271,6 +274,9 @@ export default function App() {
   // Find current user for display
   const currentUser = users.find(user => user.id === currentUserId)
 
+  // Debug logging for refresh props
+  console.log('🔍 App render - onRefresh available:', !!onRefresh, 'refreshing:', refreshing)
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -301,6 +307,7 @@ export default function App() {
 
       {/* Sessions Carousel */}
       <SessionCarousel
+        key="session-carousel" // Stable key to prevent remounting on user switch
         sessions={sessions}
         users={users}
         onResponseUpdate={handleResponseUpdate}
