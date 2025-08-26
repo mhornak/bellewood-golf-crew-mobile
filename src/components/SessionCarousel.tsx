@@ -46,6 +46,28 @@ export default function SessionCarousel({
   const [lastTargetSessionId, setLastTargetSessionId] = useState<string | null>(null)
   const flatListRef = useRef<FlatList>(null)
 
+  // Debug logging for refresh control
+  console.log('🔍 SessionCarousel render:', {
+    currentUserId,
+    hasOnRefresh: !!onRefresh,
+    refreshing,
+    sessionsCount: sessions.length,
+    hasInitialized
+  })
+
+  // Track user changes to verify component isn't remounting
+  useEffect(() => {
+    console.log('👤 SessionCarousel: currentUserId changed to:', currentUserId)
+  }, [currentUserId])
+
+  // Track mount/unmount
+  useEffect(() => {
+    console.log('🏗️ SessionCarousel: MOUNTED')
+    return () => {
+      console.log('💥 SessionCarousel: UNMOUNTED')
+    }
+  }, [])
+
   // API now filters to only today + future sessions, just sort them
   // Sort sessions by date (upcoming first) - using platform-agnostic utility
   // Use useMemo to prevent unnecessary re-sorting and useEffect triggers
@@ -219,8 +241,16 @@ export default function SessionCarousel({
         }}
         refreshControl={
           onRefresh ? (
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          ) : undefined
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={() => {
+                console.log('🔄 RefreshControl onRefresh triggered!')
+                onRefresh()
+              }} 
+            />
+          ) : (
+            console.log('⚠️ RefreshControl not rendered - onRefresh is missing') || undefined
+          )
         }
       />
     </View>

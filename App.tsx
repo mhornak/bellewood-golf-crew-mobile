@@ -151,10 +151,12 @@ export default function App() {
   // Handle user selection
   const handleUserSelect = async (userId: string) => {
     try {
+      console.log('✅ User selected:', userId, 'switching from:', currentUserId)
       await AsyncStorage.setItem(STORAGE_KEY, userId)
       setCurrentUserId(userId)
       setShowUserSelection(false)
       setIsSwitchingUser(false)
+      console.log('🎯 User switch completed to:', userId)
     } catch (error) {
       console.error('Error saving user selection:', error)
       Alert.alert('Error', 'Failed to save user selection')
@@ -164,6 +166,7 @@ export default function App() {
 
   // Handle user switch
   const handleSwitchUser = () => {
+    console.log('🔄 Starting user switch from:', currentUserId)
     setIsSwitchingUser(true)
     setShowUserSelection(true)
   }
