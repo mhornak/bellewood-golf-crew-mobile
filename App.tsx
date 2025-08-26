@@ -9,6 +9,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   Linking,
+  Modal,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import SessionCard from './src/components/SessionCard'
@@ -329,16 +330,18 @@ export default function App() {
         }}
       />
 
-      {/* User Selection Overlay (for user switching) */}
-      {showUserSelection && currentUserId && (
-        <View style={styles.overlay}>
-          <UserSelectionScreen
-            users={users}
-            onUserSelect={handleUserSelect}
-            isLoading={usersLoading || isLoadingUser}
-          />
-        </View>
-      )}
+      {/* User Selection Modal (for user switching) */}
+      <Modal
+        visible={showUserSelection && !!currentUserId}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <UserSelectionScreen
+          users={users}
+          onUserSelect={handleUserSelect}
+          isLoading={usersLoading || isLoadingUser}
+        />
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -418,14 +421,5 @@ const styles = StyleSheet.create({
   },
   switchUserIcon: {
     fontSize: 16,
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'white',
-    zIndex: 1000,
   },
 })
