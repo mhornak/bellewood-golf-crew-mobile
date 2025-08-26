@@ -37,6 +37,7 @@ export default function App() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [showUserSelection, setShowUserSelection] = useState(false)
   const [isLoadingUser, setIsLoadingUser] = useState(true)
+  const [isSwitchingUser, setIsSwitchingUser] = useState(false)
   
   // Random loading message state
   const [loadingMessage, setLoadingMessage] = useState(() => 
@@ -153,14 +154,17 @@ export default function App() {
       await AsyncStorage.setItem(STORAGE_KEY, userId)
       setCurrentUserId(userId)
       setShowUserSelection(false)
+      setIsSwitchingUser(false)
     } catch (error) {
       console.error('Error saving user selection:', error)
       Alert.alert('Error', 'Failed to save user selection')
+      setIsSwitchingUser(false)
     }
   }
 
   // Handle user switch
   const handleSwitchUser = () => {
+    setIsSwitchingUser(true)
     setShowUserSelection(true)
   }
 
@@ -253,8 +257,8 @@ export default function App() {
     )
   }
 
-  // Show loading for sessions data (only if no sessions exist yet)
-  if (loading && !refreshing && sessions.length === 0) {
+  // Show loading for sessions data (only if no sessions exist yet and not switching users)
+  if (loading && !refreshing && sessions.length === 0 && !isSwitchingUser) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
