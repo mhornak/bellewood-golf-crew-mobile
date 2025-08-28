@@ -125,10 +125,7 @@ export const mutations = {
   
   DELETE_SESSION: `
     mutation DeleteGolfSession($id: ID!) {
-      deleteGolfSession(id: $id) {
-        id title date description createdById isArchived
-        createdAt updatedAt archivedAt archivedBy
-      }
+      deleteGolfSession(id: $id)
     }
   `,
   
