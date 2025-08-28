@@ -195,7 +195,7 @@ export default function App() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await sessionApi.delete(session.id)
+              await sessionApi.delete(session.id, currentUserId || undefined)
               Alert.alert('Success!', 'Session archived successfully')
               fetchSessions() // Refresh the sessions list
             } catch (error) {

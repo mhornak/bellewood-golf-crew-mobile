@@ -123,12 +123,6 @@ export const mutations = {
     }
   `,
   
-  DELETE_SESSION: `
-    mutation DeleteGolfSession($id: ID!) {
-      deleteGolfSession(id: $id)
-    }
-  `,
-  
   SUBMIT_RESPONSE: `
     mutation SubmitResponse($input: SubmitResponseInput!) {
       submitResponse(input: $input) {

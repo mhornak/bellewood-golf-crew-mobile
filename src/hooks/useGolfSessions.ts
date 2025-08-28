@@ -67,10 +67,11 @@ export const useGolfSessions = () => {
     }
   }
 
-  // Delete session
-  const deleteSession = async (id: string) => {
+  // Archive session (soft delete)
+  const deleteSession = async (id: string, userId?: string) => {
     try {
-      const result = await sessionApi.delete(id)
+      const result = await sessionApi.delete(id, userId)
+      // For archived sessions, we filter them out from the active list
       setSessions(prev => prev.filter(session => session.id !== id))
       return { success: true, deletedResponses: result.deletedResponses }
     } catch (err) {

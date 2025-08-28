@@ -299,10 +299,16 @@ export const sessionApi = {
     return sessionApi.getById(id)
   },
 
-  // Delete session
-  delete: async (id: string): Promise<{ message: string; deletedResponses: number }> => {
-    await graphqlClient.request(mutations.DELETE_SESSION, { id })
-    return { message: 'Session deleted successfully', deletedResponses: 0 }
+  // Archive session (soft delete)
+  delete: async (id: string, userId?: string): Promise<{ message: string; deletedResponses: number }> => {
+    await graphqlClient.request(mutations.UPDATE_SESSION, {
+      input: {
+        id,
+        isArchived: true,
+        archivedBy: userId || null
+      }
+    })
+    return { message: 'Session archived successfully', deletedResponses: 0 }
   },
 
   // Submit/update response to session
