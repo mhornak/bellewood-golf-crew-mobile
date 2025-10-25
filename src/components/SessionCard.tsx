@@ -146,6 +146,7 @@ export default function SessionCard({
         userId: currentUserId,
         status: currentUserResponse.status,
         note: comment.trim() || undefined,
+        transport: currentUserResponse.transport || 'WALKING', // Preserve transport selection
       })
 
       if (result.success) {

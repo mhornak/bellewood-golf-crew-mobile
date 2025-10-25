@@ -99,9 +99,7 @@ export const mutations = {
   
   DELETE_USER: `
     mutation DeleteUser($id: ID!) {
-      deleteUser(id: $id) {
-        id name nickname phone isAdmin createdAt updatedAt
-      }
+      deleteUser(id: $id)
     }
   `,
   
@@ -149,9 +147,7 @@ export const mutations = {
   
   REMOVE_TAG_FROM_SESSION: `
     mutation RemoveTagFromSession($sessionId: ID!, $tagId: ID!) {
-      removeTagFromSession(sessionId: $sessionId, tagId: $tagId) {
-        success message
-      }
+      removeTagFromSession(sessionId: $sessionId, tagId: $tagId)
     }
   `,
 }
