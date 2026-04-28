@@ -1,7 +1,8 @@
 # Iteration 001 — iOS Universal Links
 
 **Date**: 2026-04-28
-**Status**: In Progress
+**Status**: Complete
+**Completed**: 2026-04-28
 
 ## Goal
 
@@ -67,3 +68,57 @@ app when installed (with a graceful Safari fallback when not).
 - Native iOS rebuild required because `associatedDomains` is a native
   entitlement — Expo Go won't pick it up. Verification path is a fresh
   EAS build → TestFlight → real-device test.
+
+## What We Actually Built
+
+**`golf-scheduler` (web)**:
+
+- New Route Handler at `src/app/.well-known/apple-app-site-association/route.ts`
+  returning the AASA JSON with explicit `Content-Type: application/json`.
+- New fallback page at `src/app/session/[id]/page.tsx` (intentionally minimal
+  for now; richer landing in iteration 002).
+- `next.config.ts` left at its default (no `headers()` config — see
+  "What Changed From Plan").
+
+**`golf-scheduler-mobile`**:
+
+- `app.json`: added `ios.associatedDomains: ["applinks:main.d2m423juctwnaf.amplifyapp.com"]`.
+- `App.tsx`: deep-link regex now matches both the legacy `bellewoodgolf://session/<id>`
+  custom scheme and the new `https://main.d2m423juctwnaf.amplifyapp.com/session/<id>`
+  Universal Link.
+- `src/components/SessionCard.tsx`: removed the `shortenUrl` (TinyURL) helper,
+  added a `UNIVERSAL_LINK_HOST` constant, and the share message now embeds the
+  https URL directly.
+
+## What Changed From Plan
+
+The original plan was to host the AASA file as a static asset in
+`public/.well-known/apple-app-site-association` and force `Content-Type:
+application/json` via a `next.config.ts` `headers()` config. **That doesn't
+work on Amplify Hosting.** Files in `public/` are served directly by
+CloudFront from S3 and never traverse Next.js compute, so the headers config
+is silently ignored — you get `Content-Type: application/octet-stream` and
+Amplify's default `Cache-Control: max-age=5, stale-while-revalidate`.
+
+We pivoted mid-iteration to a Next.js Route Handler. Route Handlers run in
+compute, so headers we set are honored. The static file in `public/` was
+deleted to ensure CloudFront can't intercept the path before Next.js sees it.
+This pivot is captured both here and in `docs/architecture/overview.md`.
+
+## Test / Verification Coverage
+
+- `npx tsc --noEmit` — three pre-existing errors in untouched files
+  (`SessionCarousel.tsx`, `useSessionResponse.ts`); no new errors introduced
+  by this iteration.
+- `curl -i https://main.d2m423juctwnaf.amplifyapp.com/.well-known/apple-app-site-association`
+  → 200, `Content-Type: application/json`, valid JSON body matching the
+  Route Handler output.
+- Apple AASA CDN (`https://app-site-association.cdn-apple.com/a/v1/<host>`)
+  → fetched and parsed successfully.
+- EAS production build → TestFlight → real-device test on iOS:
+  - Shared session message contains the https Universal Link (not TinyURL).
+  - iOS Messages renders a single rich link preview bubble (no detached
+    second preview from before).
+  - Tapping the preview bubble opens the app directly to the target session.
+- The custom-scheme `bellewoodgolf://session/<id>` path still works for
+  in-app navigation (regex updated to handle both forms).
