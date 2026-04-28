@@ -1,7 +1,8 @@
 # Iteration 002 — Polish iOS Share-Link Preview
 
 **Date**: 2026-04-28
-**Status**: In Progress
+**Status**: Complete
+**Completed**: 2026-04-28
 
 ## Goal
 
@@ -59,3 +60,47 @@ informative.
 - **Iteration 003** (queued in the backlog) will polish the share message
   text format generated in `SessionCard.tsx`. Keeping that mobile-side
   cleanup separate so 002 stays purely web.
+
+## What We Actually Built
+
+`golf-scheduler/src/app/session/[id]/page.tsx` rewritten:
+
+- **`generateMetadata`** — server-fetches the session (`GET_SESSION`), its
+  responses (`GET_RESPONSES_FOR_SESSION`), and the creator (`GET_USER`)
+  via the existing `graphqlClient` from `src/lib/appsync.ts`. Returns
+  `title`, `description`, `openGraph` (title/description/url/type/siteName),
+  and Twitter Card metadata. iOS Messages picks up the OG tags when
+  generating the rich link preview tile.
+- **Polished page UI** — when a visitor actually lands on the page (Safari
+  fallback / desktop / app-not-installed), they see a clean card with the
+  session title, formatted date, In/Maybe/Out stat tiles, "Created by"
+  line, "Open in app" button, and an archive notice if applicable.
+- **Graceful fallbacks** — null/archived sessions render generic metadata
+  (so we don't leak a missing session id into a tile) and a "Session not
+  found" page state for the body.
+- Helper `Stat` component for the In/Maybe/Out tiles to keep the JSX tidy.
+
+## What Changed From Plan
+
+Plan was almost a one-to-one match with what shipped. Two small additions
+worth noting:
+
+1. **Twitter Card metadata** — added alongside Open Graph for breadth.
+   No-op for iMessage but free upside for any future sharing on platforms
+   that read Twitter tags.
+2. **"Session not found" UX** — the original plan said "fall back to
+   generic metadata" but didn't spec what the body should render. Added a
+   simple "ask whoever sent you to share again" message; this also covers
+   the archived-session case.
+
+## Test / Verification Coverage
+
+- `curl https://main.d2m423juctwnaf.amplifyapp.com/session/<id>` returns
+  200 with the polished card UI and a `<head>` containing the OG tags.
+- Sharing a previously-unshared session via the iOS app produces a
+  preview tile in iMessage that shows the session title and the
+  In/Maybe/Out summary instead of generic "Bellewood Golf Crew /
+  hostname" boilerplate.
+- Tapping the preview tile still opens the app via Universal Link
+  (regression check on iteration 001).
+- Direct browser visit to the URL renders the polished card.

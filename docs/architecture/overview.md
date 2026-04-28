@@ -37,6 +37,13 @@ Universal Link domain with a Next.js web app hosted on AWS Amplify Hosting.
     so `Content-Type: application/json` is set explicitly.
   - Serves a fallback page at `/session/[id]` for non-iOS visitors and
     iOS visitors without the app installed.
+  - **Generates rich iOS Messages preview metadata** via Next.js
+    `generateMetadata` in `src/app/session/[id]/page.tsx`. iOS fetches
+    the URL server-side when rendering its iMessage link-preview tile;
+    the page returns Open Graph tags (`title`, `description`, `url`,
+    `type`, `siteName`) and Twitter Card metadata describing the session.
+    The same page also renders a polished card UI for human visitors —
+    one file, both surfaces, identical session data.
 - **Amplify Hosting deployment quirks worth knowing:**
   - Files in `public/` are served directly by CloudFront from S3 and
     bypass Next.js compute. Any `headers()` rules in `next.config.ts`
