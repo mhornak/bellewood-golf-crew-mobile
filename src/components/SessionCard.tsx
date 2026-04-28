@@ -70,70 +70,92 @@ export default function SessionCard({
   const filteredGroupingText = golfUtils.getGroupingText(filteredResponseStats.inCount)
 
   // Handle sharing session status (React Native compatible)
+  //
+  // Message format (iteration 003):
+  //
+  //   {Title}
+  //   {Day, Mon D · h:mm a}
+  //
+  //   In ({n}){ — celebration when n is 4/6/8}
+  //     {nickname} · {walking|riding}{ · {note}}
+  //     …
+  //
+  //   Maybe ({n})
+  //     {nickname}, {nickname}, …
+  //
+  //   Out ({n})
+  //     {nickname}, {nickname}, …
+  //
+  //   {Universal Link URL}
+  //
+  // The URL is bare (no label) — on iOS it becomes a rich preview tile
+  // via the AASA association set up in iteration 001, and on Android /
+  // plain SMS the URL itself is self-explanatory.
   const handleShareStatus = async () => {
     try {
-      const sessionDate = format(new Date(session.date), 'PPP p')
-      
-      // Start with clean header (no emojis)
-      let message = `${session.title}\n${sessionDate}\n`
-      
-      // Add creator info
-      message += `Created by: ${session.createdBy.nickname}\n`
-      
-      // Add group tags if any
-      if (session.sessionTags && session.sessionTags.length > 0) {
-        const tagNames = session.sessionTags.map(st => st.tag.name).join(', ')
-        message += `🏷️ ${tagNames}\n`
-      }
-      
-      message += '\n'
+      const sessionDate = format(new Date(session.date), "EEE, MMM d '·' h:mm a")
 
-      // Filter users based on session tags
-      const filteredUsers = golfUtils.filterUsersBySessionTags(users, session)
-      const filteredResponses = session.responses.filter(response =>
-        filteredUsers.some(user => user.id === response.user.id)
-      )
+      // Bucket filtered users by their response status.
+      const inUsers: Array<{ nickname: string; transport?: string | null; note?: string | null }> = []
+      const maybeUsers: string[] = []
+      const outUsers: string[] = []
 
       filteredUsers.forEach(user => {
         const userResponse = golfUtils.findUserResponse(session.responses, user.id)
         const status = userResponse?.status || 'UNDECIDED'
-        const statusEmoji = status === 'IN' ? '✅' : status === 'OUT' ? '❌' : '❓'
-        
-        // Build message parts
-        let userLine = `${statusEmoji} ${user.nickname}`
-        
-        // Add transport emoji for IN status
-        if (status === 'IN' && userResponse?.transport) {
-          const transportEmoji = userResponse.transport === 'WALKING' ? '🚶' : '🛺'
-          userLine += ` • ${transportEmoji}`
+
+        if (status === 'IN') {
+          inUsers.push({
+            nickname: user.nickname,
+            transport: userResponse?.transport,
+            note: userResponse?.note,
+          })
+        } else if (status === 'OUT') {
+          outUsers.push(user.nickname)
+        } else {
+          maybeUsers.push(user.nickname)
         }
-        
-        // Add comment with bullet separator
-        if (userResponse?.note) {
-          userLine += ` • ${userResponse.note}`
-        }
-        
-        message += `${userLine}\n`
       })
 
-      const inCount = filteredResponseStats.inCount
-      if (inCount === 8) message += `\n🎯 Perfect! 2 foursomes ready!`
-      else if (inCount === 6) message += `\n⛳ 2 threesomes`
-      else if (inCount === 4) message += `\n🏌️ 1 foursome`
-      else if (inCount > 0) message += `\n📊 ${inCount} players confirmed`
+      // Build the message. ⛳ on the title line gives the message a small
+      // "this is golf" cue without restoring the per-player emoji noise of
+      // the previous format.
+      let message = `⛳ ${session.title}\n${sessionDate}\n\n`
 
-      // Add iOS Universal Link to open the app (with web fallback for non-iOS / app-not-installed).
-      // iOS Messages auto-links real https URLs as a single tappable preview, unlike the
-      // earlier TinyURL-wrapped `bellewoodgolf://` deep link which iOS now strips.
+      // In section — header with optional celebration, then one line per player.
+      let inHeader = `In (${inUsers.length})`
+      if (inUsers.length === 8) inHeader += ' — 🎯 2 foursomes ready'
+      else if (inUsers.length === 6) inHeader += ' — ⛳ 2 threesomes'
+      else if (inUsers.length === 4) inHeader += ' — 🏌️ 1 foursome'
+      message += `${inHeader}\n`
+      inUsers.forEach(({ nickname, transport, note }) => {
+        let line = `  ${nickname}`
+        if (transport) line += ` ${transport === 'WALKING' ? '🚶' : '🛺'}`
+        if (note) line += ` · ${note}`
+        message += `${line}\n`
+      })
+      message += '\n'
+
+      // Maybe section — comma-separated names.
+      message += `Maybe (${maybeUsers.length})\n`
+      if (maybeUsers.length > 0) message += `  ${maybeUsers.join(', ')}\n`
+      message += '\n'
+
+      // Out section — comma-separated names.
+      message += `Out (${outUsers.length})\n`
+      if (outUsers.length > 0) message += `  ${outUsers.join(', ')}\n`
+
+      // Universal Link on its own line. iOS will render this as a rich preview
+      // tile (see iteration 001); on Android / plain text it shows as the URL.
       const sessionUrl = `https://${UNIVERSAL_LINK_HOST}/session/${session.id}`
-      message += `\n\n📱 Update your status: ${sessionUrl}`
+      message += `\n${sessionUrl}`
 
       await Share.share({
         message: message,
         title: `${session.title} - Golf Status Update`
       })
     } catch (err) {
-      Alert.alert('❌ Error', 'Failed to share status')
+      Alert.alert('Error', 'Failed to share status')
     }
   }
 

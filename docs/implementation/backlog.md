@@ -9,13 +9,12 @@ when the iteration completes (via the `complete-iteration` skill).
 
 | # | Title | Scope | Notes |
 |---|-------|-------|-------|
-| _none_ | — | — | Pick the next iteration when ready. |
+| 003 | Polish the share message format | Refactor `golf-scheduler-mobile/src/components/SessionCard.tsx::handleShareStatus` to group players by In / Maybe / Out with counts, tighten date format, drop tag/creator/per-player emojis, and put URL on its own bare line. | Mobile-only. No native rebuild — verifiable via Expo Go. |
 
 ## Remaining
 
 | # | Title | Scope | Dependencies |
 |---|-------|-------|--------------|
-| 003 | Polish the share message format | Clean up `golf-scheduler-mobile/src/components/SessionCard.tsx` `handleShareStatus` — better hierarchy in the message body, smarter player ordering (confirmed first, then undecided, then out), grammar fixes ("1 player confirmed"), tighter date format. Mobile-only; native rebuild not required. | None remaining. |
 | _004?_ | AI-Native the `golf-scheduler` and `golf-scheduler-aws` repos | Apply the AI Native Repo recommendations (AGENTS.md, CLAUDE.md symlink, `.agents/` canonical layout, `.claude/`/`.cursor/` symlinks) to both other repos. Optional compound engineering setup per repo. | None. Can run independently of 003. |
 
 ## Completed
