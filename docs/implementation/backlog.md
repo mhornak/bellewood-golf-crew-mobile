@@ -9,13 +9,14 @@ when the iteration completes (via the `complete-iteration` skill).
 
 | # | Title | Scope | Notes |
 |---|-------|-------|-------|
-| 003 | Polish the share message format | Refactor `golf-scheduler-mobile/src/components/SessionCard.tsx::handleShareStatus` to group players by In / Maybe / Out with counts, tighten date format, drop tag/creator/per-player emojis, and put URL on its own bare line. | Mobile-only. No native rebuild — verifiable via Expo Go. |
+| _none_ | — | — | Pick the next iteration when ready. |
 
 ## Remaining
 
 | # | Title | Scope | Dependencies |
 |---|-------|-------|--------------|
-| _004?_ | AI-Native the `golf-scheduler` and `golf-scheduler-aws` repos | Apply the AI Native Repo recommendations (AGENTS.md, CLAUDE.md symlink, `.agents/` canonical layout, `.claude/`/`.cursor/` symlinks) to both other repos. Optional compound engineering setup per repo. | None. Can run independently of 003. |
+| 004 | AI-Native the `golf-scheduler` and `golf-scheduler-aws` repos | Apply the AI Native Repo recommendations (AGENTS.md, CLAUDE.md symlink, `.agents/` canonical layout, `.claude/`/`.cursor/` symlinks) to both other repos. Optional compound engineering setup per repo. | None. |
+| _backlog_ | Resolve pre-existing TypeScript errors | Fix `SessionCarousel.tsx:252` (`expression of type 'void'`) and `useSessionResponse.ts:42`/`:138` (`isArchived` not on `GolfSession`) so `npx tsc --noEmit` becomes a clean quality gate. Flagged in iteration 001's learnings. | None. |
 
 ## Completed
 
@@ -23,6 +24,7 @@ when the iteration completes (via the `complete-iteration` skill).
 |---|-------|--------|---------|
 | 001 | iOS Universal Links | Complete (2026-04-28) | Replaced TinyURL+custom-scheme deep linking with iOS Universal Links served from `main.d2m423juctwnaf.amplifyapp.com`. AASA via Next.js Route Handler (not `public/`) to avoid Amplify's CloudFront bypass. `app.json` `associatedDomains`, App.tsx regex updated, `SessionCard.tsx` drops TinyURL. Verified end-to-end on real device. |
 | 002 | Polish iOS share-link preview | Complete (2026-04-28) | Added `generateMetadata` to `golf-scheduler/src/app/session/[id]/page.tsx` with server-side AppSync fetches (session + responses + creator). iMessage preview tile now shows session title, formatted date, and In/Maybe/Out summary. Polished the page UI itself for the Safari/non-iOS fallback case. Verified in iMessage. |
+| 003 | Polish the share message format | Complete (2026-04-28) | Refactored `SessionCard.tsx::handleShareStatus` — players bucketed by status with counts (In one-per-line, Maybe/Out comma-joined), tighter date format, dropped redundant tag/creator/per-player-status emojis, kept ⛳ on the title and 🚶/🛺 transport emojis on IN players for personality. URL is bare on its own line (rich preview tile from iteration 002 carries the visual). Verified via Expo Go on real device. |
 
 ## Deferred
 

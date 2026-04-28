@@ -1,7 +1,8 @@
 # Iteration 003 — Polish the Share Message Format
 
 **Date**: 2026-04-28
-**Status**: In Progress
+**Status**: Complete
+**Completed**: 2026-04-28
 
 ## Goal
 
@@ -88,3 +89,49 @@ These were settled with Mark before coding:
   `"EEE, MMM d '·' h:mm a"` (middle dot escaped as a literal).
 - Player grouping derives directly from `golfUtils.findUserResponse`'s
   `status` field; no new helper needed.
+
+## What We Actually Built
+
+Single-file change: `src/components/SessionCard.tsx::handleShareStatus`
+rewritten end-to-end. The function now:
+
+- Bucket-sorts `filteredUsers` into three arrays — `inUsers`,
+  `maybeUsers`, `outUsers` — based on each user's response status.
+- Renders an `In (n)` header (with celebration suffix when `n` is 4/6/8),
+  followed by one indented line per IN player with their transport
+  emoji (🚶/🛺) and any note appended via ` · `.
+- Renders `Maybe (n)` and `Out (n)` headers, each followed by a single
+  comma-separated nicknames line when there's at least one entry.
+- Appends the Universal Link URL on its own line, no label, no emoji.
+- Adds `⛳` to the title line as the only non-celebration emoji at the
+  top.
+
+## What Changed From Plan
+
+The first cut implemented the spec exactly as planned — fully text, no
+emoji at all on player lines or in the header. It typecheck-passed and
+visually it _was_ much cleaner than the old format, but on real-device
+review it felt sterile — more like a calendar invite than a Bellewood
+Golf Crew message. We layered two emojis back in mid-iteration:
+
+1. **`⛳` on the title line** — one golf-themed character at the top
+   signals "this is a golf message" without weighing the body down.
+2. **Transport emojis on IN players** (🚶 / 🛺) — replaced the text
+   `walking` / `riding`. Same information, more compact, carries
+   personality.
+
+Per-player status emojis (✅ / ❓ / ❌) stayed dropped — those were the
+worst offender for visual noise and the section headers fully replace
+their function.
+
+## Test / Verification Coverage
+
+- `npx tsc --noEmit` — touched file is clean. Same three pre-existing
+  errors in untouched files (`SessionCarousel.tsx`,
+  `useSessionResponse.ts`) carry over from iteration 001's report.
+- Verified via Expo Go hot reload on real device (no native rebuild
+  needed since no entitlements changed).
+- Re-shared a test session in iMessage — message body matches the
+  spec, the rich preview tile from iteration 002 still renders
+  correctly (regression check), and the URL line at the bottom is
+  bare.
