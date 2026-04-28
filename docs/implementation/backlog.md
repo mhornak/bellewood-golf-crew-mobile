@@ -9,7 +9,7 @@ when the iteration completes (via the `complete-iteration` skill).
 
 | # | Title | Scope | Notes |
 |---|-------|-------|-------|
-| _none yet_ | — | — | First iteration starts when work resumes. |
+| 001 | iOS Universal Links | Replace broken TinyURL+custom-scheme deep links in `Share Group Status` with Universal Links served from the existing Amplify domain. Touches `golf-scheduler-mobile` (app.json, App.tsx, SessionCard.tsx) and `golf-scheduler` (AASA file, next.config.ts, /session/[id] fallback page). | Native rebuild required — verify via EAS → TestFlight → real-device test. |
 
 ## Remaining
 

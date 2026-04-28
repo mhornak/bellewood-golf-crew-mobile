@@ -106,9 +106,13 @@ export default function App() {
   useEffect(() => {
     const handleDeepLink = (url: string) => {
       console.log('🔗 Deep link received:', url)
-      
-      // Parse the deep link: bellewoodgolf://session/SESSION_ID
-      const sessionMatch = url.match(/bellewoodgolf:\/\/session\/(.+)/)
+
+      // Parse the deep link in either form:
+      //   bellewoodgolf://session/SESSION_ID   (custom scheme — in-app, fallback)
+      //   https://main.d2m423juctwnaf.amplifyapp.com/session/SESSION_ID   (iOS Universal Link)
+      const sessionMatch = url.match(
+        /(?:bellewoodgolf:\/\/session\/|https:\/\/main\.d2m423juctwnaf\.amplifyapp\.com\/session\/)([^/?#]+)/
+      )
       if (sessionMatch) {
         const sessionId = sessionMatch[1]
         console.log('📍 Navigating to session:', sessionId)

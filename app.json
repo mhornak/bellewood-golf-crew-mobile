@@ -17,6 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.mhornak.bellewood-golf-crew",
       "buildNumber": "1",
+      "associatedDomains": ["applinks:main.d2m423juctwnaf.amplifyapp.com"],
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "tel",

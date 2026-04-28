@@ -4,20 +4,9 @@ import { format } from 'date-fns'
 import { useSessionResponse } from '../hooks/useSessionResponse'
 import { golfUtils, type GolfSession } from '../lib/api'
 
-// URL shortening helper using TinyURL API
-const shortenUrl = async (longUrl: string): Promise<string> => {
-  try {
-    const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`)
-    if (!response.ok) {
-      throw new Error('TinyURL API request failed')
-    }
-    const shortUrl = await response.text()
-    return shortUrl.trim()
-  } catch (error) {
-    console.error('Failed to shorten URL:', error)
-    return longUrl // Fallback to original URL if shortening fails
-  }
-}
+// Universal Link host — must match `applinks:` in app.json `ios.associatedDomains`
+// and the AASA file served at https://<host>/.well-known/apple-app-site-association
+const UNIVERSAL_LINK_HOST = 'main.d2m423juctwnaf.amplifyapp.com'
 
 interface SessionCardProps {
   session: GolfSession
@@ -133,12 +122,11 @@ export default function SessionCard({
       else if (inCount === 4) message += `\n🏌️ 1 foursome`
       else if (inCount > 0) message += `\n📊 ${inCount} players confirmed`
 
-      // Generate shortened URL for the deep link
-      const deepLink = `bellewoodgolf://session/${session.id}`
-      const shortUrl = await shortenUrl(deepLink)
-      
-      // Add shortened link to message
-      message += `\n\n📱 Update your status: ${shortUrl}`
+      // Add iOS Universal Link to open the app (with web fallback for non-iOS / app-not-installed).
+      // iOS Messages auto-links real https URLs as a single tappable preview, unlike the
+      // earlier TinyURL-wrapped `bellewoodgolf://` deep link which iOS now strips.
+      const sessionUrl = `https://${UNIVERSAL_LINK_HOST}/session/${session.id}`
+      message += `\n\n📱 Update your status: ${sessionUrl}`
 
       await Share.share({
         message: message,
